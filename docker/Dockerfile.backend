@@ -1,0 +1,23 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Instalar dependências para compilação (necessário para algumas libs como pandas/numpy em certas arquiteturas)
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copiar requirements antes para aproveitar o cache do Docker
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copiar código-fonte
+COPY backend/app ./app
+
+# Garantir que a pasta /data existe para o volume
+RUN mkdir -p /data
+
+EXPOSE 8000
+
+# Rodar com --reload para desenvolvimento local
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
