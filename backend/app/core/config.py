@@ -1,6 +1,4 @@
-import os
 from pathlib import Path
-from typing import Optional
 
 from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
@@ -19,12 +17,8 @@ class Settings(BaseSettings):
     API_V1_STR: str = "/api/v1"
 
     BASE_DIR: str = str(BACKEND_DIR)
-    DATABASE_URL: str = f"sqlite:///{BACKEND_DIR / 'data' / 'app.db'}"
 
-    GEMINI_API_KEY: Optional[str] = None
-    GEMINI_MODEL: str = "gemini-2.1-flash"
-
-    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_API_KEY: str | None = None
     OPENAI_MODEL: str = "gpt-5"
     OPENAI_IMAGE_MODEL: str = "gpt-image-1"
     OPENAI_IMAGE_SIZE: str = "1536x1024"

@@ -11,6 +11,7 @@ from app.schemas.editorial import (
     GeneratePautasResponse,
     PublishArticleRequest,
     PublishArticleResponse,
+    SyncWordPressStatusResponse,
 )
 from app.services.article_package_service import article_package_service
 from app.services.excel_editorial_service import excel_editorial_service
@@ -44,7 +45,10 @@ def get_editorial_system_status():
 @router.get("/pautas")
 def list_excel_pautas():
     try:
-        return [pauta.model_dump(by_alias=True) for pauta in excel_editorial_service.list_pautas()]
+        pautas = excel_editorial_service.list_pautas()
+        if not pautas:
+            pautas = excel_editorial_service.seed_initial_pautas()
+        return [pauta.model_dump(by_alias=True) for pauta in pautas]
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erro ao ler planilha Excel: {exc}")
 
@@ -67,6 +71,15 @@ def generate_excel_pautas(payload: GeneratePautasRequest):
         return GeneratePautasResponse(created_count=len(created), pautas=created)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar pautas na planilha Excel: {exc}")
+
+
+@router.post("/pautas/sync-wordpress", response_model=SyncWordPressStatusResponse)
+def sync_excel_pautas_with_wordpress():
+    try:
+        result = editorial_publish_service.sync_wordpress_status()
+        return SyncWordPressStatusResponse(**result)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erro ao sincronizar status com o WordPress: {exc}")
 
 
 @router.post("/articles/{pauta_id}/generate", response_model=ArticlePackageResponse)

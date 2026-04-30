@@ -7,6 +7,14 @@ from app.integrations.wordpress import wordpress_client
 
 
 class EditorialPublishService:
+    def _map_wordpress_status(self, wp_status: str) -> str:
+        normalized = (wp_status or "").strip().lower()
+        if normalized == "publish":
+            return "Publicado"
+        if normalized in {"draft", "pending", "future", "private"}:
+            return "Rascunho"
+        return "Rascunho"
+
     def _category_ids(self, category_name: str) -> list[int]:
         if not category_name:
             return []
@@ -108,6 +116,40 @@ class EditorialPublishService:
             "status": publish_status,
             "message": "Post publicado com sucesso" if publish_status == "publish" else "Rascunho criado com sucesso",
             "image": image_result["status"],
+        }
+
+    def sync_wordpress_status(self) -> Dict[str, int | str]:
+        pautas = excel_editorial_service.list_pautas()
+        checked_count = 0
+        updated_count = 0
+
+        for pauta in pautas:
+            if not pauta.url_wordpress:
+                continue
+
+            checked_count += 1
+            post = wordpress_client.get_post_by_url(pauta.url_wordpress)
+            if not post:
+                continue
+
+            desired_status = self._map_wordpress_status(post.get("status", ""))
+            updates: Dict[str, str] = {}
+
+            if pauta.status != desired_status:
+                updates["Status"] = desired_status
+            if post.get("link") and pauta.url_wordpress != post.get("link"):
+                updates["URL WordPress"] = post["link"]
+            if desired_status == "Publicado" and not pauta.data_publicacao:
+                updates["Data publicacao"] = datetime.now().strftime("%Y-%m-%d")
+
+            if updates:
+                excel_editorial_service.update_row(pauta.id, updates)
+                updated_count += 1
+
+        return {
+            "checked_count": checked_count,
+            "updated_count": updated_count,
+            "message": f"Sincronizacao concluida: {updated_count} pauta(s) atualizada(s) em {checked_count} verificacao(oes).",
         }
 
 

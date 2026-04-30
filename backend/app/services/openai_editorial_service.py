@@ -37,6 +37,32 @@ class OpenAIEditorialService:
             raise ValueError("Resposta do modelo nao trouxe JSON valido")
         return json.loads(match.group(0))
 
+    def _normalize_text(self, value: str) -> str:
+        normalized = re.sub(r"\s+", " ", (value or "").strip()).strip().lower()
+        return normalized
+
+    def _strip_duplicate_leading_heading(self, html: str, title: str) -> str:
+        if not html or not title:
+            return html
+
+        pattern = re.compile(r"^\s*<h[1-6][^>]*>(.*?)</h[1-6]>\s*", re.IGNORECASE | re.DOTALL)
+        match = pattern.match(html)
+        if not match:
+            return html
+
+        heading_text = re.sub(r"<[^>]+>", "", match.group(1))
+        if self._normalize_text(heading_text) != self._normalize_text(title):
+            return html
+
+        return html[match.end():].lstrip()
+
+    def _sanitize_article_payload(self, payload: dict) -> dict:
+        title = payload.get("titulo", "")
+        if title:
+            payload["conteudo_html"] = self._strip_duplicate_leading_heading(payload.get("conteudo_html", ""), title)
+            payload["preview_html"] = self._strip_duplicate_leading_heading(payload.get("preview_html", ""), title)
+        return payload
+
     def _load_reference(self, path: Path, fallback: str) -> str:
         if path.exists():
             return path.read_text(encoding="utf-8")
@@ -168,7 +194,7 @@ class OpenAIEditorialService:
             tools=self._tools(),
             input=prompt,
         )
-        return self._extract_json(response.output_text)
+        return self._sanitize_article_payload(self._extract_json(response.output_text))
 
 
 openai_editorial_service = OpenAIEditorialService()

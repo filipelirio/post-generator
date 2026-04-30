@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, Filter, Eye, Sparkles, Clock3, CheckCircle2, FileText, Loader2 } from "lucide-react";
+import { Search, Filter, Eye, Sparkles, Clock3, CheckCircle2, FileText, Loader2, RefreshCw } from "lucide-react";
 import clsx from "clsx";
 import { toast } from "react-hot-toast";
 
@@ -30,6 +30,7 @@ export default function PautasPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [generatingPautas, setGeneratingPautas] = useState(false);
   const [generatingArticleId, setGeneratingArticleId] = useState<string | null>(null);
+  const [syncingStatuses, setSyncingStatuses] = useState(false);
 
   const fetchPautas = async () => {
     setLoading(true);
@@ -74,6 +75,20 @@ export default function PautasPage() {
     }
   };
 
+  const handleSyncWordPressStatuses = async () => {
+    setSyncingStatuses(true);
+    const toastId = toast.loading("Sincronizando status com o WordPress...");
+    try {
+      const response = await api.post("/editorial/pautas/sync-wordpress");
+      toast.success(response.data.message || "Status sincronizados.", { id: toastId });
+      await fetchPautas();
+    } catch (error: any) {
+      toast.error(error.response?.data?.detail || "Erro ao sincronizar status.", { id: toastId });
+    } finally {
+      setSyncingStatuses(false);
+    }
+  };
+
   const handleGenerateArticle = async (id: string) => {
     setGeneratingArticleId(id);
     const toastId = toast.loading("Gerando artigo, SEO e capa...");
@@ -106,14 +121,24 @@ export default function PautasPage() {
           <h2 className="text-2xl font-bold text-slate-900">Fila de Pautas</h2>
           <p className="text-sm text-slate-500">Planilha local + GPT com web search + publicação no WordPress com Yoast e imagem.</p>
         </div>
-        <button
-          onClick={handleGeneratePautas}
-          disabled={generatingPautas}
-          className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {generatingPautas ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-          <span>Gerar 10 Novas Pautas</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={handleSyncWordPressStatuses}
+            disabled={syncingStatuses || loading}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {syncingStatuses ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            <span>Atualizar status WP</span>
+          </button>
+          <button
+            onClick={handleGeneratePautas}
+            disabled={generatingPautas}
+            className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {generatingPautas ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            <span>Gerar 10 Novas Pautas</span>
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm md:grid-cols-3">

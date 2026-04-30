@@ -1,152 +1,98 @@
-# Easy Artigos — Easy Medicina
+# Easy Artigos - Easy Medicina
 
-Aplicação local para operação editorial do blog Easy Medicina.
+Aplicacao local para operar o fluxo editorial do blog Easy Medicina.
 
-Hoje o fluxo oficial do projeto é este:
-- planilha editorial local em Excel
-- geração de novas pautas com GPT + web search
-- geração de artigo completo com SEO, links internos, links externos e CTA comercial
-- geração automática de capa
-- review no dashboard
-- criação de rascunho ou publicação direta no WordPress
-- backup automático da planilha, dos pacotes de artigo e das imagens
+## O que o app faz
 
-## Visão geral
+- mantem a fila de pautas em uma planilha Excel local
+- gera novas pautas com GPT + web search
+- gera artigo em HTML para WordPress
+- gera capa automaticamente
+- mostra preview no dashboard
+- publica no WordPress com Yoast e imagem destacada
+- sincroniza status do WordPress de volta para a planilha
+- cria backups da planilha, dos artigos e das imagens
 
-O projeto foi reorganizado para operar com um fluxo editorial simples e confiável:
-
-1. A planilha local guarda as pautas.
-2. O backend usa OpenAI para gerar novas pautas ou artigos.
-3. O frontend mostra dashboard, fila editorial, review e settings.
-4. O WordPress recebe o artigo com conteúdo, Yoast e imagem destacada.
-
-O caminho principal de dados fica em:
-- [backend/data](D:/ChatGPT/post-generator/backend/data)
-
-## Estrutura do projeto
+## Estrutura principal
 
 ```text
 backend/
   app/
     api/v1/
-      editorial.py         # fluxo novo oficial
-      pautas.py            # legado
-      generation.py        # legado
-      wordpress.py         # legado/teste antigo
+      editorial.py
     core/
-    db/
+      config.py
     integrations/
-      wordpress.py         # integração WordPress ativa
+      wordpress.py
     schemas/
+      editorial.py
     services/
-      excel_editorial_service.py
-      openai_editorial_service.py
-      openai_image_service.py
       article_package_service.py
       editorial_file_service.py
       editorial_publish_service.py
+      excel_editorial_service.py
+      openai_editorial_service.py
+      openai_image_service.py
+    main.py
   data/
     editorial_pautas.xlsx
     generated_articles/
     generated_images/
     backups/
+  requirements.txt
   venv/
 
 frontend/
   src/
     app/
-      page.tsx             # dashboard
+      page.tsx
       pautas/
       settings/
     components/
+      Sidebar.tsx
     lib/
+      api.ts
+    styles/
+      globals.css
 
 references/
   manual_editorial_easy_medicina.md
   principles-seo.md
-  prompt_generate_pautas.md
   prompt_generate_article.md
+  prompt_generate_pautas.md
 ```
 
 ## Fluxo oficial
 
-### 1. Gerar pautas
-
-Use o botão do dashboard ou da tela de pautas para criar novas pautas.
-
-O backend:
-- analisa a planilha atual
-- usa GPT com web search
-- evita duplicação de tema e keyword
-- grava as novas linhas em `editorial_pautas.xlsx`
-
-### 2. Gerar artigo
-
-Ao clicar em `Gerar artigo`, o backend cria:
-- `artigo_[slug].txt`
-- `artigo_[slug]_seo.txt`
-- `artigo_[slug]_imagem.txt`
-
-Esses arquivos ficam em:
-- [generated_articles](D:/ChatGPT/post-generator/backend/data/generated_articles)
-
-A imagem gerada fica em:
-- [generated_images](D:/ChatGPT/post-generator/backend/data/generated_images)
-
-### 3. Review
-
-A tela de review mostra:
-- prévia HTML do artigo
-- SEO do Yoast
-- links internos e externos
-- conversão/CTA
-- preview visual da capa
-
-### 4. Publicar
-
-Na review existem dois caminhos:
-- `Criar rascunho`
-- `Publicar de verdade`
-
-O backend publica no WordPress com:
-- título
-- conteúdo
-- slug
-- excerpt
-- tags
-- categoria
-- metadados Yoast
-- imagem destacada
-
-Depois disso, a planilha é atualizada com:
-- status
-- data de publicação
-- URL do WordPress
+1. A fila editorial fica em [editorial_pautas.xlsx](D:/ChatGPT/post-generator/backend/data/editorial_pautas.xlsx).
+2. O backend gera pautas e artigos usando OpenAI com apoio de web search.
+3. O pacote gerado salva:
+   - `artigo_[slug].txt`
+   - `artigo_[slug]_seo.txt`
+   - `artigo_[slug]_imagem.txt`
+4. A review mostra preview do HTML e da capa.
+5. O WordPress recebe conteudo, slug, excerpt, Yoast e featured image.
+6. O app pode sincronizar o status publicado de volta para a planilha.
 
 ## Endpoints principais
 
-O fluxo novo usa:
-
+- `GET /api/v1/editorial/system/status`
 - `GET /api/v1/editorial/pautas`
 - `GET /api/v1/editorial/pautas/{pauta_id}`
 - `POST /api/v1/editorial/pautas/generate`
+- `POST /api/v1/editorial/pautas/sync-wordpress`
 - `POST /api/v1/editorial/articles/{pauta_id}/generate`
 - `GET /api/v1/editorial/articles/{pauta_id}`
 - `GET /api/v1/editorial/articles/{pauta_id}/image`
 - `POST /api/v1/editorial/articles/publish`
-- `GET /api/v1/editorial/system/status`
 
-Os endpoints antigos ainda existem no backend por compatibilidade, mas não são o fluxo principal do app.
+## Variaveis de ambiente
 
-## Configuração
-
-O projeto lê variáveis de ambiente do arquivo:
+O backend le:
 - [`.env`](D:/ChatGPT/post-generator/.env)
-
-Exemplo de base:
 - [`.env.example`](D:/ChatGPT/post-generator/backend/.env.example)
 
-Campos mais importantes:
+Campos principais:
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 - `OPENAI_IMAGE_MODEL`
@@ -155,26 +101,36 @@ Campos mais importantes:
 - `WORDPRESS_USERNAME`
 - `WORDPRESS_APPLICATION_PASSWORD`
 
-Observação:
-- o backend já usa caminhos padrão internos para `backend/data`, então você não precisa configurar planilha ou pastas se quiser seguir a convenção atual
+Os caminhos de planilha e pastas de output ja apontam para `backend/data` por padrao.
+
+## Onde editar os prompts
+
+Tudo que depende de prompt ou diretriz editorial fica em [references](D:/ChatGPT/post-generator/references):
+
+- [manual_editorial_easy_medicina.md](D:/ChatGPT/post-generator/references/manual_editorial_easy_medicina.md)
+- [principles-seo.md](D:/ChatGPT/post-generator/references/principles-seo.md)
+- [prompt_generate_pautas.md](D:/ChatGPT/post-generator/references/prompt_generate_pautas.md)
+- [prompt_generate_article.md](D:/ChatGPT/post-generator/references/prompt_generate_article.md)
+
+Os placeholders desses prompts precisam continuar existindo quando voce editar o texto.
 
 ## Como rodar
 
-### Opção mais simples
+### Jeito mais simples
 
-Use:
+Use [Iniciar_Local.bat](D:/ChatGPT/post-generator/Iniciar_Local.bat).
 
-- [Iniciar_Local.bat](D:/ChatGPT/post-generator/Iniciar_Local.bat)
-
-Esse arquivo:
+Ele:
 - sobe o backend com o `venv`
-- sobe o frontend com `npm run dev`
+- sobe o frontend
+- detecta a porta livre do Next.js
+- abre o navegador automaticamente
 
 ### Backend manual
 
 ```powershell
 cd D:\ChatGPT\post-generator\backend
-.\venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+.\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 ### Frontend manual
@@ -184,57 +140,10 @@ cd D:\ChatGPT\post-generator\frontend
 npm run dev
 ```
 
-## Onde editar a estratégia editorial
+## Backups
 
-Se você quiser ajustar comportamento do GPT sem mexer em código, edite estes arquivos:
+Os backups automaticos ficam em [backend/data/backups](D:/ChatGPT/post-generator/backend/data/backups).
 
-- [manual_editorial_easy_medicina.md](D:/ChatGPT/post-generator/references/manual_editorial_easy_medicina.md)
-- [principles-seo.md](D:/ChatGPT/post-generator/references/principles-seo.md)
-- [prompt_generate_pautas.md](D:/ChatGPT/post-generator/references/prompt_generate_pautas.md)
-- [prompt_generate_article.md](D:/ChatGPT/post-generator/references/prompt_generate_article.md)
+## Estado atual
 
-O serviço que consome isso é:
-- [openai_editorial_service.py](D:/ChatGPT/post-generator/backend/app/services/openai_editorial_service.py)
-
-Os prompts aceitam placeholders como:
-- `[[COUNT]]`
-- `[[EDITORIAL_MANUAL]]`
-- `[[SEO_PRINCIPLES]]`
-- `[[EXISTING_KEYWORDS]]`
-- `[[EXISTING_TOPICS]]`
-- `[[FORCE_CATEGORY]]`
-- `[[NOTES]]`
-- `[[PAUTA_CONTEXT]]`
-
-Esses placeholders devem continuar existindo quando fizer ajustes.
-
-## Backups automáticos
-
-O sistema gera versionamento automático em:
-- [backups](D:/ChatGPT/post-generator/backend/data/backups)
-
-Inclui:
-- snapshots da planilha
-- snapshots dos pacotes de artigo
-- snapshots das imagens geradas
-
-## Estado atual do produto
-
-O fluxo principal está operacional.
-
-Já funciona de ponta a ponta:
-- gerar pautas
-- gerar artigo
-- gerar capa
-- revisar no dashboard
-- publicar no WordPress
-- atualizar a planilha
-- manter backup dos artefatos principais
-
-## O que ainda é legado
-
-Ainda existem partes antigas no repositório, mas não fazem parte do caminho principal:
-- rotas antigas de `pautas`, `generation` e `wordpress`
-- modelos e repositórios do SQLite legado
-
-Enquanto não houver necessidade de compatibilidade, o ideal é considerar o namespace `editorial` como o fluxo oficial do projeto.
+O fluxo oficial do projeto e o namespace `editorial`.

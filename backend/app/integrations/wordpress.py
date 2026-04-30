@@ -4,6 +4,7 @@ import time
 import unicodedata
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+from urllib.parse import parse_qs, urlparse
 
 import requests
 
@@ -92,6 +93,35 @@ class WordPressClient:
     def get_post(self, post_id: int) -> Dict[str, Any]:
         response = self._request("GET", f"posts/{post_id}")
         return response.json()
+
+    def get_post_by_slug(self, slug: str, status: str = "any") -> Optional[Dict[str, Any]]:
+        params: Dict[str, Any] = {"slug": slug}
+        if status and status != "any":
+            params["status"] = status
+        response = self._request("GET", "posts", params=params)
+        posts = response.json()
+        return posts[0] if posts else None
+
+    def get_post_by_url(self, url: str) -> Optional[Dict[str, Any]]:
+        if not url:
+            return None
+
+        parsed = urlparse(url)
+        query_post_id = parse_qs(parsed.query).get("p", [])
+        if query_post_id:
+            try:
+                return self.get_post(int(query_post_id[0]))
+            except Exception:
+                return None
+
+        slug = parsed.path.rstrip("/").split("/")[-1].strip()
+        if not slug:
+            return None
+
+        try:
+            return self.get_post_by_slug(slug, status="any")
+        except Exception:
+            return None
 
     def update_post(self, post_id: int, payload: Dict[str, Any]) -> Dict[str, Any]:
         response = self._request("POST", f"posts/{post_id}", json=payload)

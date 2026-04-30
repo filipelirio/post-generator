@@ -110,6 +110,12 @@ class PublishArticleResponse(BaseModel):
     image: Optional[str] = None
 
 
+class SyncWordPressStatusResponse(BaseModel):
+    checked_count: int
+    updated_count: int
+    message: str
+
+
 class EditorialSystemStatusResponse(BaseModel):
     openai_configured: bool
     image_generation_enabled: bool

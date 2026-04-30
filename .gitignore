@@ -28,13 +28,23 @@ backend/data/*.xlsx
 !backend/data/backups/.gitkeep
 !backend/data/backups/articles/
 !backend/data/backups/articles/.gitkeep
+backend/data/backups/articles/*
+!backend/data/backups/articles/.gitkeep
 !backend/data/backups/excel/
+!backend/data/backups/excel/.gitkeep
+backend/data/backups/excel/*
 !backend/data/backups/excel/.gitkeep
 !backend/data/backups/images/
 !backend/data/backups/images/.gitkeep
+backend/data/backups/images/*
+!backend/data/backups/images/.gitkeep
 !backend/data/generated_articles/
 !backend/data/generated_articles/.gitkeep
+backend/data/generated_articles/*
+!backend/data/generated_articles/.gitkeep
 !backend/data/generated_images/
+!backend/data/generated_images/.gitkeep
+backend/data/generated_images/*
 !backend/data/generated_images/.gitkeep
 
 # IDEs
