@@ -1,107 +1,240 @@
-# Gerador de Artigos AI para WordPress - Easy Medicina
+# Easy Artigos — Easy Medicina
 
-Aplicação local completa e robusta para geração de artigos otimizados para SEO utilizando Inteligência Artificial (Gemini) a partir de pautas editoriais importadas via planilha Excel (.xlsx), com publicação automatizada no WordPress.
+Aplicação local para operação editorial do blog Easy Medicina.
 
-## 🚀 Stack Tecnológica
+Hoje o fluxo oficial do projeto é este:
+- planilha editorial local em Excel
+- geração de novas pautas com GPT + web search
+- geração de artigo completo com SEO, links internos, links externos e CTA comercial
+- geração automática de capa
+- review no dashboard
+- criação de rascunho ou publicação direta no WordPress
+- backup automático da planilha, dos pacotes de artigo e das imagens
 
-- **Backend**: FastAPI (Python) + SQLAlchemy (ORM) + Pydantic (Validação)
-- **Frontend**: Next.js (React/TypeScript) + Tailwind CSS + Lucide Icons + React-Quill (Editor)
-- **Banco de Dados**: SQLite hospedado na pasta `/data` (Persistência local)
-- **IA**: Gemini API (`google-genai` SDK oficial)
-- **Integração CMS**: WordPress REST API via `httpx`
-- **Ambiente**: Docker Compose
+## Visão geral
 
----
+O projeto foi reorganizado para operar com um fluxo editorial simples e confiável:
 
-## 📂 Estrutura de Pastas
+1. A planilha local guarda as pautas.
+2. O backend usa OpenAI para gerar novas pautas ou artigos.
+3. O frontend mostra dashboard, fila editorial, review e settings.
+4. O WordPress recebe o artigo com conteúdo, Yoast e imagem destacada.
+
+O caminho principal de dados fica em:
+- [backend/data](D:/ChatGPT/post-generator/backend/data)
+
+## Estrutura do projeto
 
 ```text
-/backend
-  /app
-    /api/v1          # Endpoint de Pautas, Geração, WordPress
-    /core            # Configurações e Logs
-    /db              # Sessão e Base Class
-    /models          # Tabelas SQLAlchemy (Pauta, Draft, etc.)
-    /repositories    # Camada de Acesso a Dados (Queries)
-    /services        # Lógica de Orquestração da IA
-    /integrations     # Cliente Gemini e WordPress
-    /prompts         # Prompts estruturados (.txt)
-    /utils           # Parser de Excel (pandas)
-/frontend
-  /src
-    /app             # Páginas (Dashboard, Import, Pautas)
-    /components      # Sidebar, Editor Rico, UI
-    /lib             # Cliente Axios
-/data                # Volumes Docker para SQLite e Uploads
-/docker              # Dockerfiles
+backend/
+  app/
+    api/v1/
+      editorial.py         # fluxo novo oficial
+      pautas.py            # legado
+      generation.py        # legado
+      wordpress.py         # legado/teste antigo
+    core/
+    db/
+    integrations/
+      wordpress.py         # integração WordPress ativa
+    schemas/
+    services/
+      excel_editorial_service.py
+      openai_editorial_service.py
+      openai_image_service.py
+      article_package_service.py
+      editorial_file_service.py
+      editorial_publish_service.py
+  data/
+    editorial_pautas.xlsx
+    generated_articles/
+    generated_images/
+    backups/
+  venv/
+
+frontend/
+  src/
+    app/
+      page.tsx             # dashboard
+      pautas/
+      settings/
+    components/
+    lib/
+
+references/
+  manual_editorial_easy_medicina.md
+  principles-seo.md
+  prompt_generate_pautas.md
+  prompt_generate_article.md
 ```
 
----
+## Fluxo oficial
 
-## ⚙️ Como Configurar
+### 1. Gerar pautas
 
-1. **Clonar/Instalar**:
-   - Certifique-se de ter **Docker** e **Docker Compose** instalados na sua máquina.
+Use o botão do dashboard ou da tela de pautas para criar novas pautas.
 
-2. **Variáveis de Ambiente**:
-   - Copie o arquivo `.env.example` na raiz para `.env`:
-     ```bash
-     cp .env.example .env
-     ```
-   - Abra o `.env` e preencha as variáveis obrigatórias:
-     - `GEMINI_API_KEY`: Sua chave de API do Google AI Studio.
-     - `WORDPRESS_URL`: URL do seu blog (ex: `https://easymedicina.com`).
-     - `WORDPRESS_USERNAME`: Seu usuário administrativo.
-     - `WORDPRESS_APPLICATION_PASSWORD`: Senha de App gerada no seu perfil WordPress.
+O backend:
+- analisa a planilha atual
+- usa GPT com web search
+- evita duplicação de tema e keyword
+- grava as novas linhas em `editorial_pautas.xlsx`
 
----
+### 2. Gerar artigo
 
-## 🐳 Como Rodar com Docker (Recomendado)
+Ao clicar em `Gerar artigo`, o backend cria:
+- `artigo_[slug].txt`
+- `artigo_[slug]_seo.txt`
+- `artigo_[slug]_imagem.txt`
 
-Na raiz do projeto, execute o comando para subir os containers do Backend e Frontend:
+Esses arquivos ficam em:
+- [generated_articles](D:/ChatGPT/post-generator/backend/data/generated_articles)
 
-```bash
-docker-compose up -d --build
+A imagem gerada fica em:
+- [generated_images](D:/ChatGPT/post-generator/backend/data/generated_images)
+
+### 3. Review
+
+A tela de review mostra:
+- prévia HTML do artigo
+- SEO do Yoast
+- links internos e externos
+- conversão/CTA
+- preview visual da capa
+
+### 4. Publicar
+
+Na review existem dois caminhos:
+- `Criar rascunho`
+- `Publicar de verdade`
+
+O backend publica no WordPress com:
+- título
+- conteúdo
+- slug
+- excerpt
+- tags
+- categoria
+- metadados Yoast
+- imagem destacada
+
+Depois disso, a planilha é atualizada com:
+- status
+- data de publicação
+- URL do WordPress
+
+## Endpoints principais
+
+O fluxo novo usa:
+
+- `GET /api/v1/editorial/pautas`
+- `GET /api/v1/editorial/pautas/{pauta_id}`
+- `POST /api/v1/editorial/pautas/generate`
+- `POST /api/v1/editorial/articles/{pauta_id}/generate`
+- `GET /api/v1/editorial/articles/{pauta_id}`
+- `GET /api/v1/editorial/articles/{pauta_id}/image`
+- `POST /api/v1/editorial/articles/publish`
+- `GET /api/v1/editorial/system/status`
+
+Os endpoints antigos ainda existem no backend por compatibilidade, mas não são o fluxo principal do app.
+
+## Configuração
+
+O projeto lê variáveis de ambiente do arquivo:
+- [`.env`](D:/ChatGPT/post-generator/.env)
+
+Exemplo de base:
+- [`.env.example`](D:/ChatGPT/post-generator/backend/.env.example)
+
+Campos mais importantes:
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`
+- `OPENAI_IMAGE_MODEL`
+- `OPENAI_WEBSEARCH_ENABLED`
+- `WORDPRESS_URL`
+- `WORDPRESS_USERNAME`
+- `WORDPRESS_APPLICATION_PASSWORD`
+
+Observação:
+- o backend já usa caminhos padrão internos para `backend/data`, então você não precisa configurar planilha ou pastas se quiser seguir a convenção atual
+
+## Como rodar
+
+### Opção mais simples
+
+Use:
+
+- [Iniciar_Local.bat](D:/ChatGPT/post-generator/Iniciar_Local.bat)
+
+Esse arquivo:
+- sobe o backend com o `venv`
+- sobe o frontend com `npm run dev`
+
+### Backend manual
+
+```powershell
+cd D:\ChatGPT\post-generator\backend
+.\venv\Scripts\python.exe -m uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
-- **Frontend**: [http://localhost:3000](http://localhost:3000)
-- **Backend (API Docs)**: [http://localhost:8000/api/v1/docs](http://localhost:8000/api/v1/docs)
+### Frontend manual
 
----
-
-## 🏃‍♂️ Como Rodar Sem Docker (Localmente)
-
-### 1. Backend
-```bash
-cd backend
-python -m venv venv
-source venv/bin/activate  # No Windows: venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-*Gere o banco criando o diretório `/data` na raiz antes.*
-
-### 2. Frontend
-```bash
-cd frontend
-npm install
+```powershell
+cd D:\ChatGPT\post-generator\frontend
 npm run dev
 ```
 
----
+## Onde editar a estratégia editorial
 
-## 🧠 Fluxo de Uso Simplificado
+Se você quiser ajustar comportamento do GPT sem mexer em código, edite estes arquivos:
 
-1. **Importação**: Acesse a tela "Importar Planilha" e faça o upload de um `.xlsx` contendo a coluna `tema` (obrigatória).
-2. **Lista**: Vá para "Pautas" para ver as linhas importadas.
-3. **Geração**: Clique em "Visualizar" em uma pauta e depois em "Gerar com IA".
-   - O sistema criará o Planejamento Editorial -> Redigirá o Artigo -> Criará o Rascunho.
-4. **Revisão**: Use o **Editor Rico** para fazer ajustes manuais ou ler o que a IA gerou.
-5. **Publicação**: Tudo aprovado? Clique em "Publicar no WP" para enviar como `draft` (Rascunho) diretamente para o painel do seu WordPress.
+- [manual_editorial_easy_medicina.md](D:/ChatGPT/post-generator/references/manual_editorial_easy_medicina.md)
+- [principles-seo.md](D:/ChatGPT/post-generator/references/principles-seo.md)
+- [prompt_generate_pautas.md](D:/ChatGPT/post-generator/references/prompt_generate_pautas.md)
+- [prompt_generate_article.md](D:/ChatGPT/post-generator/references/prompt_generate_article.md)
 
----
+O serviço que consome isso é:
+- [openai_editorial_service.py](D:/ChatGPT/post-generator/backend/app/services/openai_editorial_service.py)
 
-## ⚠️ Limitações do MVP e Próximos Passos
-- Integração de Upload de Imagem de Capa para o WordPress (Mídia).
-- Autenticação de Usuários (Uso Local Seguro por ser Multi-Volume).
-- Filas de Tarefas (Redis) para geração assíncrona se houver muitos artigos simultâneos.
+Os prompts aceitam placeholders como:
+- `[[COUNT]]`
+- `[[EDITORIAL_MANUAL]]`
+- `[[SEO_PRINCIPLES]]`
+- `[[EXISTING_KEYWORDS]]`
+- `[[EXISTING_TOPICS]]`
+- `[[FORCE_CATEGORY]]`
+- `[[NOTES]]`
+- `[[PAUTA_CONTEXT]]`
+
+Esses placeholders devem continuar existindo quando fizer ajustes.
+
+## Backups automáticos
+
+O sistema gera versionamento automático em:
+- [backups](D:/ChatGPT/post-generator/backend/data/backups)
+
+Inclui:
+- snapshots da planilha
+- snapshots dos pacotes de artigo
+- snapshots das imagens geradas
+
+## Estado atual do produto
+
+O fluxo principal está operacional.
+
+Já funciona de ponta a ponta:
+- gerar pautas
+- gerar artigo
+- gerar capa
+- revisar no dashboard
+- publicar no WordPress
+- atualizar a planilha
+- manter backup dos artefatos principais
+
+## O que ainda é legado
+
+Ainda existem partes antigas no repositório, mas não fazem parte do caminho principal:
+- rotas antigas de `pautas`, `generation` e `wordpress`
+- modelos e repositórios do SQLite legado
+
+Enquanto não houver necessidade de compatibilidade, o ideal é considerar o namespace `editorial` como o fluxo oficial do projeto.
