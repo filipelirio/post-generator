@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 venv/
 .env
+.env.local
 
 # Node.js
 node_modules/
@@ -18,6 +19,20 @@ build/
 data/*.db
 data/*.sqlite
 data/*.sqlite3
+backend/data/*
+!backend/data/.gitkeep
+!backend/data/backups/
+!backend/data/backups/.gitkeep
+!backend/data/backups/articles/
+!backend/data/backups/articles/.gitkeep
+!backend/data/backups/excel/
+!backend/data/backups/excel/.gitkeep
+!backend/data/backups/images/
+!backend/data/backups/images/.gitkeep
+!backend/data/generated_articles/
+!backend/data/generated_articles/.gitkeep
+!backend/data/generated_images/
+!backend/data/generated_images/.gitkeep
 
 # IDEs
 .vscode/

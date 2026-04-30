@@ -66,10 +66,35 @@ def parse_excel_pautas(file_content: bytes) -> Tuple[List[PautaCreate], List[Dic
     errors = []
 
     try:
-        # Ler o Excel usando pandas
-        df = pd.read_excel(io.BytesIO(file_content))
+        import io
+        
+        # Estratégia: Tentar Excel primeiro (assinatura binária rígida)
+        try:
+            df = pd.read_excel(io.BytesIO(file_content))
+            print("DEBUG: Arquivo detectado como Excel (.xlsx)")
+        except Exception:
+            # Se falhar, tentar como CSV
+            print("DEBUG: Falha ao ler como Excel, tentando como CSV...")
+            # Tentar diferentes encodings comuns no Windows/Brasil
+            encodings = ['utf-8', 'latin-1', 'cp1252']
+            df = None
+            last_error = None
+            
+            for enc in encodings:
+                try:
+                    # sep=None com engine='python' detecta o separador automaticamente
+                    df = pd.read_csv(io.BytesIO(file_content), sep=None, engine='python', encoding=enc)
+                    print(f"DEBUG: Arquivo detectado como CSV (Encoding: {enc})")
+                    break
+                except Exception as e:
+                    last_error = e
+                    continue
+            
+            if df is None:
+                raise last_error or ValueError("Não foi possível detectar o formato ou encoding do CSV.")
+            
     except Exception as e:
-        raise ValueError(f"Não foi possível ler o arquivo Excel: {str(e)}")
+        raise ValueError(f"Erro ao processar arquivo (Excel/CSV): {str(e)}")
 
     # Normalizar nomes das colunas (remover espaços, lower case)
     df.columns = [str(col).strip().lower().replace(" ", "_") for col in df.columns]

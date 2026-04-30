@@ -105,13 +105,21 @@ def export_pautas(db: Session = Depends(get_db)):
 
 @router.post("/import")
 async def import_pautas(file: UploadFile = File(...), db: Session = Depends(get_db)):
-    """Upload de planilha Excel (.xlsx) para importar pautas (Legado/Complementar)"""
-    if not file.filename.endswith(".xlsx"):
-        raise HTTPException(status_code=400, detail="Apenas arquivos .xlsx são suportados.")
+    """Upload de planilha Excel (.xlsx) ou CSV para importar pautas"""
+    print(f"DEBUG: Recebendo arquivo para importação: {file.filename}")
+    
+    # Aceitar tanto .xlsx quanto .csv (case-insensitive)
+    filename_lower = file.filename.lower()
+    is_valid_extension = filename_lower.endswith((".xlsx", ".csv"))
+    if not is_valid_extension:
+        print(f"DEBUG: Extensão inválida: {file.filename}")
+        raise HTTPException(status_code=400, detail="Apenas arquivos .xlsx e .csv são suportados.")
 
-    contents = await file.read()
     try:
+        print(f"DEBUG: Processando arquivo de {file.size} bytes...")
+        contents = await file.read()
         valid_pautas, errors = parse_excel_pautas(contents)
+        print(f"DEBUG: Parser retornou {len(valid_pautas)} pautas.")
         
         # Salvar pautas válidas no banco
         created_count = 0

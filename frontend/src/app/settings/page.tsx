@@ -1,89 +1,260 @@
 "use client";
 
-import { useState } from "react";
-import { Settings, RefreshCw, CheckCircle, XCircle, Sparkles } from "lucide-react";
-import api from "@/lib/api";
+import { useCallback, useEffect, useState } from "react";
+import {
+  CheckCircle,
+  FileSpreadsheet,
+  FolderArchive,
+  Globe,
+  Image as ImageIcon,
+  RefreshCw,
+  Search,
+  Settings,
+  Sparkles,
+  XCircle,
+} from "lucide-react";
 import clsx from "clsx";
 
-export default function SettingsPage() {
-  const [testing, setTesting] = useState(false);
-  const [status, setStatus] = useState<{ type: "success" | "error", message: string } | null>(null);
+import api from "@/lib/api";
 
-  const handleTestConnection = async () => {
-    setTesting(true);
-    setStatus(null);
-    try {
-      const response = await api.post("/wordpress/test-connection");
-      setStatus({ type: "success", message: response.data.message });
-    } catch (error: any) {
-      setStatus({ 
-        type: "error", 
-        message: error.response?.data?.detail || "Falha ao conectar com o WordPress." 
-      });
-    } finally {
-      setTesting(false);
+type SystemStatus = {
+  openai_configured: boolean;
+  image_generation_enabled: boolean;
+  websearch_enabled: boolean;
+  wordpress_url: string;
+  wordpress_configured: boolean;
+  wordpress_connection_ok: boolean;
+  excel_path: string;
+  generated_articles_dir: string;
+  generated_images_dir: string;
+  backups_dir: string;
+};
+
+function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <span
+      className={clsx(
+        "inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold",
+        ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"
+      )}
+    >
+      {ok ? <CheckCircle className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+      {label}
+    </span>
+  );
+}
+
+export default function SettingsPage() {
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [status, setStatus] = useState<SystemStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadStatus = useCallback(async (showRefresh = false) => {
+    if (showRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
     }
-  };
+
+    try {
+      const response = await api.get("/editorial/system/status");
+      setStatus(response.data);
+      setError(null);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || "Nao foi possivel carregar o diagnostico do fluxo editorial.");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Configurações de Integração</h2>
-        <p className="text-sm text-slate-500">Teste a conexão com serviços externos e visualize credenciais.</p>
-      </div>
-
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-6">
-        <div className="flex items-center gap-2 border-b pb-4">
-          <Settings className="w-5 h-5 text-slate-500" />
-          <h3 className="text-lg font-bold text-slate-800">WordPress</h3>
+    <div className="mx-auto max-w-5xl space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Configuracoes do fluxo editorial</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Aqui fica o panorama real da operacao: GPT com web search, geracao de capas, planilha local,
+            backups e WordPress.
+          </p>
         </div>
 
-        <div className="space-y-4">
-          <p className="text-sm text-slate-600">
-            As credenciais do WordPress são gerenciadas através do arquivo <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">.env</code> no backend para maior segurança.
-          </p>
+        <button
+          onClick={() => loadStatus(true)}
+          disabled={refreshing}
+          className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
+        >
+          <RefreshCw className={clsx("h-4 w-4", refreshing && "animate-spin")} />
+          {refreshing ? "Atualizando..." : "Atualizar diagnostico"}
+        </button>
+      </div>
 
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="font-semibold text-slate-500">URL do Blog:</span>
-              <p className="text-slate-800 mt-1">https://easymedicina.com</p>
+      {loading ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+          <div className="flex items-center gap-3 text-sm text-slate-500">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            Carregando estado da aplicacao...
+          </div>
+        </div>
+      ) : null}
+
+      {error ? (
+        <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm font-medium text-rose-700">
+          {error}
+        </div>
+      ) : null}
+
+      {status ? (
+        <>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-violet-600" />
+                <span className="font-semibold text-slate-800">GPT editorial</span>
+              </div>
+              <StatusBadge ok={status.openai_configured} label={status.openai_configured ? "Configurado" : "Pendente"} />
+              <p className="mt-3 text-sm text-slate-600">
+                O backend esta pronto para gerar pautas e artigos com o fluxo novo.
+              </p>
             </div>
-            <div>
-              <span className="font-semibold text-slate-500">Autenticação:</span>
-              <p className="text-slate-800 mt-1">Application Password</p>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <Search className="h-5 w-5 text-blue-600" />
+                <span className="font-semibold text-slate-800">Web search</span>
+              </div>
+              <StatusBadge ok={status.websearch_enabled} label={status.websearch_enabled ? "Ativo" : "Desligado"} />
+              <p className="mt-3 text-sm text-slate-600">
+                O gerador esta orientado a buscar referencias, links internos e links externos reais.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-emerald-600" />
+                <span className="font-semibold text-slate-800">Capas IA</span>
+              </div>
+              <StatusBadge
+                ok={status.image_generation_enabled}
+                label={status.image_generation_enabled ? "Prontas" : "Indisponiveis"}
+              />
+              <p className="mt-3 text-sm text-slate-600">
+                A capa pode ser gerada junto com o pacote do artigo e enviada ao WordPress.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+              <div className="mb-3 flex items-center gap-2">
+                <Globe className="h-5 w-5 text-green-600" />
+                <span className="font-semibold text-slate-800">WordPress</span>
+              </div>
+              <StatusBadge
+                ok={status.wordpress_connection_ok}
+                label={status.wordpress_connection_ok ? "Conectado" : "Verificar"}
+              />
+              <p className="mt-3 text-sm text-slate-600">
+                {status.wordpress_url}
+              </p>
             </div>
           </div>
 
-          <button
-            onClick={handleTestConnection}
-            disabled={testing}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
-          >
-            <RefreshCw className={clsx("h-4 w-4 text-slate-500", testing && "animate-spin")} />
-            {testing ? "Testando..." : "Testar Conexão"}
-          </button>
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <Settings className="h-5 w-5 text-slate-500" />
+                <h3 className="text-lg font-bold text-slate-900">Fluxo ativo</h3>
+              </div>
 
-          {status && (
-            <div className={clsx(
-              "flex items-center gap-2 p-3 rounded-lg text-sm font-medium",
-              status.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
-            )}>
-              {status.type === "success" ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-              <span>{status.message}</span>
+              <div className="space-y-4 text-sm text-slate-700">
+                <div>
+                  <p className="font-semibold text-slate-900">Geracao de pautas</p>
+                  <p className="mt-1 text-slate-600">
+                    O GPT gera novas pautas com base no manual da Easy Medicina, na planilha local e em pesquisa web.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Geracao de artigos</p>
+                  <p className="mt-1 text-slate-600">
+                    Cada artigo sai com corpo HTML, SEO para Yoast, links internos, links externos, CTA e capa.
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Publicacao</p>
+                  <p className="mt-1 text-slate-600">
+                    A review agora suporta rascunho e publicacao direta no WordPress a partir do mesmo pacote.
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </div>
 
-      <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm space-y-4">
-        <div className="flex items-center gap-2 border-b pb-4">
-          <Sparkles className="w-5 h-5 text-slate-500" />
-          <h3 className="text-lg font-bold text-slate-800">IA (Gemini)</h3>
-        </div>
-        <p className="text-sm text-slate-600">
-          A integração com o Gemini API utiliza o modelo <code className="bg-slate-100 px-1.5 py-0.5 rounded text-xs">gemini-2.1-flash</code> para geração rápida de plano e artigo.
-        </p>
-      </div>
+            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center gap-2">
+                <FolderArchive className="h-5 w-5 text-amber-600" />
+                <h3 className="text-lg font-bold text-slate-900">Arquivos e backups</h3>
+              </div>
+
+              <div className="space-y-4 text-sm text-slate-700">
+                <div>
+                  <p className="font-semibold text-slate-900">Planilha local</p>
+                  <p className="mt-1 break-all rounded-lg bg-slate-50 px-3 py-2 text-slate-600">
+                    {status.excel_path}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Pacotes gerados</p>
+                  <p className="mt-1 break-all rounded-lg bg-slate-50 px-3 py-2 text-slate-600">
+                    {status.generated_articles_dir}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Capas geradas</p>
+                  <p className="mt-1 break-all rounded-lg bg-slate-50 px-3 py-2 text-slate-600">
+                    {status.generated_images_dir}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-semibold text-slate-900">Backups automaticos</p>
+                  <p className="mt-1 break-all rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
+                    {status.backups_dir}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className="mb-4 flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
+              <h3 className="text-lg font-bold text-slate-900">O que esta versionado automaticamente</h3>
+            </div>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">Planilha editorial</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Cada escrita da planilha cria um snapshot em backup para manter historico operacional.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">Pacotes do artigo</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  Os arquivos de artigo, SEO e imagem sao salvos em versoes com timestamp.
+                </p>
+              </div>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
+                <p className="font-semibold text-slate-900">Capas geradas</p>
+                <p className="mt-2 text-sm text-slate-600">
+                  As capas geradas pelo GPT tambem entram no trilho de backup para reaproveitamento futuro.
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
     </div>
   );
 }
