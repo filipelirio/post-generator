@@ -15,23 +15,25 @@ class EditorialPublishService:
             return "Rascunho"
         return "Rascunho"
 
-    def _category_ids(self, category_name: str) -> list[int]:
+    def _category_ids(self, category_name: str, warnings: list[str]) -> list[int]:
         if not category_name:
             return []
         try:
             category_id = wordpress_client.get_or_create_category(category_name)
             return [category_id] if category_id else []
-        except Exception:
+        except Exception as exc:
+            warnings.append(f"Categoria nao aplicada: {exc}")
             return []
 
-    def _tag_ids(self, tags: list[str]) -> list[int]:
+    def _tag_ids(self, tags: list[str], warnings: list[str]) -> list[int]:
         tag_ids = []
         for tag in tags:
             try:
                 tag_id = wordpress_client.get_or_create_tag(tag)
                 if tag_id:
                     tag_ids.append(tag_id)
-            except Exception:
+            except Exception as exc:
+                warnings.append(f"Tag nao aplicada ({tag}): {exc}")
                 continue
         return tag_ids
 
@@ -62,6 +64,8 @@ class EditorialPublishService:
     def publish(self, slug: str | None = None, publish_status: str = "draft", pauta_id: str | None = None) -> Dict:
         slug = self._resolve_slug(slug=slug, pauta_id=pauta_id)
         package = editorial_file_service.load_package(slug)
+        warnings: list[str] = []
+        pauta = excel_editorial_service.get_pauta_by_id(str(pauta_id or package.get("pauta_id", "")))
 
         post_data = {
             "title": package["title"],
@@ -69,11 +73,21 @@ class EditorialPublishService:
             "slug": package["slug"],
             "excerpt": package["meta_desc"],
             "status": publish_status,
-            "categories": self._category_ids(package["category"]),
-            "tags": self._tag_ids(package["tags"]),
+            "categories": self._category_ids(package["category"], warnings),
+            "tags": self._tag_ids(package["tags"], warnings),
         }
 
-        response = wordpress_client.create_post(post_data)
+        existing_post_id = None
+        if pauta and pauta.wordpress_post_id:
+            try:
+                existing_post_id = int(pauta.wordpress_post_id)
+            except ValueError:
+                warnings.append(f"WordPress Post ID invalido na planilha: {pauta.wordpress_post_id}")
+
+        if existing_post_id:
+            response = wordpress_client.update_post(existing_post_id, post_data)
+        else:
+            response = wordpress_client.create_post(post_data)
         post_id = response.get("id")
         link = response.get("link", "")
 
@@ -91,13 +105,14 @@ class EditorialPublishService:
                 schema_article_type="Article",
                 schema_page_type="WebPage",
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            warnings.append(f"Yoast nao atualizado: {exc}")
 
         try:
             image_result = self._attach_featured_image(post_id, package)
-        except Exception:
+        except Exception as exc:
             image_result = {"status": "falhou"}
+            warnings.append(f"Imagem destacada nao aplicada: {exc}")
 
         resolved_pauta_id = package.get("pauta_id") or pauta_id
         if resolved_pauta_id:
@@ -107,6 +122,7 @@ class EditorialPublishService:
                     "Status": "Publicado" if publish_status == "publish" else "Rascunho",
                     "Data publicacao": datetime.now().strftime("%Y-%m-%d"),
                     "URL WordPress": response.get("link", ""),
+                    "WordPress Post ID": str(post_id or ""),
                 },
             )
 
@@ -114,8 +130,9 @@ class EditorialPublishService:
             "post_id": post_id,
             "url": link,
             "status": publish_status,
-            "message": "Post publicado com sucesso" if publish_status == "publish" else "Rascunho criado com sucesso",
+            "message": "Post publicado com sucesso" if publish_status == "publish" else "Rascunho salvo com sucesso",
             "image": image_result["status"],
+            "warnings": warnings,
         }
 
     def sync_wordpress_status(self) -> Dict[str, int | str]:
@@ -139,6 +156,8 @@ class EditorialPublishService:
                 updates["Status"] = desired_status
             if post.get("link") and pauta.url_wordpress != post.get("link"):
                 updates["URL WordPress"] = post["link"]
+            if post.get("id") and pauta.wordpress_post_id != str(post["id"]):
+                updates["WordPress Post ID"] = str(post["id"])
             if desired_status == "Publicado" and not pauta.data_publicacao:
                 updates["Data publicacao"] = datetime.now().strftime("%Y-%m-%d")
 

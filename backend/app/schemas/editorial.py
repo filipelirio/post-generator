@@ -25,6 +25,7 @@ SHEET_COLUMNS = [
     "Data criacao",
     "Data publicacao",
     "URL WordPress",
+    "WordPress Post ID",
 ]
 
 
@@ -51,6 +52,7 @@ class SheetPauta(BaseModel):
     data_criacao: str = Field(default="", alias="Data criacao")
     data_publicacao: str = Field(default="", alias="Data publicacao")
     url_wordpress: str = Field(default="", alias="URL WordPress")
+    wordpress_post_id: str = Field(default="", alias="WordPress Post ID")
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -108,6 +110,7 @@ class PublishArticleResponse(BaseModel):
     status: str
     message: str
     image: Optional[str] = None
+    warnings: List[str] = Field(default_factory=list)
 
 
 class SyncWordPressStatusResponse(BaseModel):

@@ -1,4 +1,5 @@
 import shutil
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -14,6 +15,7 @@ class ExcelEditorialService:
         self.path = Path(settings.EXCEL_PAUTAS_PATH)
         self.sheet_name = settings.EXCEL_PAUTAS_SHEET_NAME
         self.backup_dir = Path(settings.EXCEL_BACKUPS_DIR)
+        self._lock = threading.Lock()
         self.path.parent.mkdir(parents=True, exist_ok=True)
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
@@ -30,8 +32,13 @@ class ExcelEditorialService:
         if self.path.exists():
             try:
                 df = pd.read_excel(self.path, sheet_name=self.sheet_name, dtype=str).fillna("")
-                if list(df.columns) == SHEET_COLUMNS:
+                missing_columns = [column for column in SHEET_COLUMNS if column not in df.columns]
+                if not missing_columns:
                     return
+                for column in missing_columns:
+                    df[column] = ""
+                self._write_df(df)
+                return
             except Exception:
                 pass
         df = pd.DataFrame(columns=SHEET_COLUMNS)
@@ -44,9 +51,10 @@ class ExcelEditorialService:
 
     def _write_df(self, df: pd.DataFrame) -> None:
         ordered = df.reindex(columns=SHEET_COLUMNS, fill_value="")
-        with pd.ExcelWriter(self.path, engine="openpyxl") as writer:
-            ordered.to_excel(writer, sheet_name=self.sheet_name, index=False)
-        self._snapshot_workbook()
+        with self._lock:
+            with pd.ExcelWriter(self.path, engine="openpyxl") as writer:
+                ordered.to_excel(writer, sheet_name=self.sheet_name, index=False)
+            self._snapshot_workbook()
 
     def list_pautas(self) -> List[SheetPauta]:
         df = self._read_df()

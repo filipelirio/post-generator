@@ -65,20 +65,32 @@ export default function ReviewPage({ params }: ReviewPageProps) {
   const [loading, setLoading] = useState(true);
   const [publishingMode, setPublishingMode] = useState<"draft" | "publish" | null>(null);
   const [imagePreviewError, setImagePreviewError] = useState(false);
+  const [articleUnavailable, setArticleUnavailable] = useState(false);
 
   useEffect(() => {
     async function fetchData() {
       try {
-        const [pautaRes, articleRes] = await Promise.all([
-          api.get(`/editorial/pautas/${id}`),
-          api.get(`/editorial/articles/${id}`),
-        ]);
+        const pautaRes = await api.get(`/editorial/pautas/${id}`);
         setPauta(pautaRes.data);
-        setArticle(articleRes.data);
-        setImagePreviewError(false);
+
+        try {
+          const articleRes = await api.get(`/editorial/articles/${id}`);
+          setArticle(articleRes.data);
+          setArticleUnavailable(false);
+          setImagePreviewError(false);
+        } catch (articleError: any) {
+          if (articleError.response?.status === 404) {
+            setArticle(null);
+            setArticleUnavailable(true);
+            setImagePreviewError(true);
+          } else {
+            throw articleError;
+          }
+        }
+
       } catch (error) {
         console.error("Erro ao buscar dados editoriais:", error);
-        toast.error("Nao foi possivel carregar o artigo gerado.");
+        toast.error("Não foi possível carregar os dados da pauta.");
         router.push("/pautas");
       } finally {
         setLoading(false);
@@ -114,6 +126,12 @@ export default function ReviewPage({ params }: ReviewPageProps) {
           (publishStatus === "publish" ? "Artigo publicado com sucesso." : "Rascunho criado com sucesso."),
         { id: toastId }
       );
+      if (response.data.warnings?.length) {
+        toast(
+          `Publicado com avisos: ${response.data.warnings.slice(0, 2).join(" | ")}`,
+          { duration: 8000 }
+        );
+      }
 
       if (response.data.url) {
         window.open(response.data.url, "_blank");
@@ -144,9 +162,9 @@ export default function ReviewPage({ params }: ReviewPageProps) {
             <ArrowLeft className="h-5 w-5 text-slate-500" />
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">Revisao editorial</h1>
+            <h1 className="text-2xl font-bold text-slate-900">Revisão editorial</h1>
             <p className="text-sm text-slate-500">
-              Previa do artigo, SEO, links e capa antes de seguir para rascunho ou publicacao final.
+              Prévia do artigo, SEO, links e capa antes de seguir para rascunho ou publicação final.
             </p>
           </div>
         </div>
@@ -178,17 +196,32 @@ export default function ReviewPage({ params }: ReviewPageProps) {
             <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 p-6">
               <div className="flex items-center gap-2">
                 <Layout className="h-5 w-5 text-green-600" />
-                <span className="font-semibold text-slate-700">Previa do artigo</span>
+                <span className="font-semibold text-slate-700">Prévia do artigo</span>
               </div>
               <span className="rounded border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500">HTML SEO</span>
             </div>
 
             <div className="prose prose-slate max-w-none p-8">
-              <h2 className="mb-6 text-3xl font-bold text-slate-900">{article?.title}</h2>
+              <h2 className="mb-6 text-3xl font-bold text-slate-900">{article?.title || pauta?.Tema}</h2>
               {article?.content_html ? (
                 <div dangerouslySetInnerHTML={{ __html: article.content_html }} />
+              ) : articleUnavailable && pauta?.["URL WordPress"] ? (
+                <div className="space-y-4 not-prose">
+                  <p className="text-slate-600">
+                    O pacote local deste artigo não está mais salvo no app, mas a pauta já possui uma publicação registrada no WordPress.
+                  </p>
+                  <a
+                    href={pauta["URL WordPress"]}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    <span>Abrir artigo publicado</span>
+                  </a>
+                </div>
               ) : (
-                <p className="italic text-slate-400">Nenhum conteudo gerado.</p>
+                <p className="italic text-slate-400">Nenhum conteúdo gerado.</p>
               )}
             </div>
           </div>
@@ -203,7 +236,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
 
             <div className="space-y-3">
               <div>
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Titulo SEO</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Título SEO</label>
                 <div className="mt-1 text-sm font-medium text-slate-700">{article?.seo_title}</div>
               </div>
 
@@ -224,7 +257,7 @@ export default function ReviewPage({ params }: ReviewPageProps) {
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-2 flex items-center gap-2">
               <Tag className="h-5 w-5 text-orange-500" />
-              <h3 className="font-bold text-slate-900">Pauta e conversao</h3>
+              <h3 className="font-bold text-slate-900">Pauta e conversão</h3>
             </div>
 
             <div className="space-y-3 text-sm text-slate-700">
@@ -255,8 +288,15 @@ export default function ReviewPage({ params }: ReviewPageProps) {
               </div>
               {pauta?.["URL WordPress"] ? (
                 <div>
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Ultima URL registrada</label>
-                  <p className="mt-1 break-all text-slate-600">{pauta["URL WordPress"]}</p>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Última URL registrada</label>
+                  <a
+                    href={pauta["URL WordPress"]}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-1 block break-all text-slate-600 underline decoration-slate-300 underline-offset-2 hover:text-slate-900"
+                  >
+                    {pauta["URL WordPress"]}
+                  </a>
                 </div>
               ) : null}
             </div>
@@ -313,13 +353,13 @@ export default function ReviewPage({ params }: ReviewPageProps) {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center text-slate-500">
-                  A previa da capa nao esta disponivel nesta pauta.
+                  A prévia da capa não está disponível nesta pauta.
                 </div>
               )}
 
               <div className="space-y-2">
                 <p><strong>Tipo:</strong> {article?.image?.type || "-"}</p>
-                <p className="break-all"><strong>Arquivo:</strong> {article?.image?.path || "Nao gerado"}</p>
+                <p className="break-all"><strong>Arquivo:</strong> {article?.image?.path || "Não gerado"}</p>
                 <p><strong>Alt:</strong> {article?.image?.alt || "-"}</p>
                 {article?.image?.short_theme ? <p><strong>Tema curto:</strong> {article.image.short_theme}</p> : null}
               </div>

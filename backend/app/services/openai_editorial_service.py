@@ -8,6 +8,7 @@ from openai import OpenAI
 
 from app.core.config import settings
 from app.schemas.editorial import GeneratePautasRequest, SheetPauta
+from app.services.html_sanitizer_service import sanitize_html
 
 
 class OpenAIEditorialService:
@@ -41,6 +42,19 @@ class OpenAIEditorialService:
         normalized = re.sub(r"\s+", " ", (value or "").strip()).strip().lower()
         return normalized
 
+    def _stringify_field(self, value) -> str:
+        if value is None:
+            return ""
+        if isinstance(value, str):
+            return value.strip()
+        if isinstance(value, (list, tuple)):
+            cleaned = [self._stringify_field(item) for item in value]
+            cleaned = [item for item in cleaned if item]
+            return "; ".join(cleaned)
+        if isinstance(value, dict):
+            return json.dumps(value, ensure_ascii=False)
+        return str(value).strip()
+
     def _strip_duplicate_leading_heading(self, html: str, title: str) -> str:
         if not html or not title:
             return html
@@ -61,6 +75,8 @@ class OpenAIEditorialService:
         if title:
             payload["conteudo_html"] = self._strip_duplicate_leading_heading(payload.get("conteudo_html", ""), title)
             payload["preview_html"] = self._strip_duplicate_leading_heading(payload.get("preview_html", ""), title)
+        payload["conteudo_html"] = sanitize_html(payload.get("conteudo_html", ""))
+        payload["preview_html"] = sanitize_html(payload.get("preview_html", ""))
         return payload
 
     def _load_reference(self, path: Path, fallback: str) -> str:
@@ -129,22 +145,22 @@ class OpenAIEditorialService:
                         "ID": str(next_id + idx),
                         "Status": "Pendente",
                         "Prioridade": "Alta",
-                        "Tema": item.get("tema", ""),
-                        "Titulo sugerido": item.get("titulo_sugerido", ""),
-                        "Categoria": item.get("categoria", request.force_category or ""),
-                        "Palavra-chave principal": item.get("palavra_chave_principal", ""),
-                        "Palavras-chave secundarias": item.get("palavras_chave_secundarias", ""),
-                        "Volume de busca": item.get("volume_de_busca", ""),
-                        "Dificuldade SEO": item.get("dificuldade_seo", ""),
-                        "Intencao de busca": item.get("intencao_de_busca", ""),
-                        "Posicao no funil": item.get("posicao_no_funil", ""),
-                        "CTA sugerido": item.get("cta_sugerido", ""),
-                        "Produto sugerido": item.get("produto_sugerido", ""),
-                        "Tamanho recomendado": item.get("tamanho_recomendado", ""),
-                        "Topicos obrigatorios": item.get("topicos_obrigatorios", ""),
-                        "Topicos proibidos": item.get("topicos_proibidos", ""),
-                        "Observacoes editoriais": item.get("observacoes_editoriais", ""),
-                        "SEO rationale": item.get("seo_rationale", ""),
+                        "Tema": self._stringify_field(item.get("tema", "")),
+                        "Titulo sugerido": self._stringify_field(item.get("titulo_sugerido", "")),
+                        "Categoria": self._stringify_field(item.get("categoria", request.force_category or "")),
+                        "Palavra-chave principal": self._stringify_field(item.get("palavra_chave_principal", "")),
+                        "Palavras-chave secundarias": self._stringify_field(item.get("palavras_chave_secundarias", "")),
+                        "Volume de busca": self._stringify_field(item.get("volume_de_busca", "")),
+                        "Dificuldade SEO": self._stringify_field(item.get("dificuldade_seo", "")),
+                        "Intencao de busca": self._stringify_field(item.get("intencao_de_busca", "")),
+                        "Posicao no funil": self._stringify_field(item.get("posicao_no_funil", "")),
+                        "CTA sugerido": self._stringify_field(item.get("cta_sugerido", "")),
+                        "Produto sugerido": self._stringify_field(item.get("produto_sugerido", "")),
+                        "Tamanho recomendado": self._stringify_field(item.get("tamanho_recomendado", "")),
+                        "Topicos obrigatorios": self._stringify_field(item.get("topicos_obrigatorios", "")),
+                        "Topicos proibidos": self._stringify_field(item.get("topicos_proibidos", "")),
+                        "Observacoes editoriais": self._stringify_field(item.get("observacoes_editoriais", "")),
+                        "SEO rationale": self._stringify_field(item.get("seo_rationale", "")),
                         "Data criacao": created_at,
                     }
                 )

@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableDelayedExpansion
 title Easy Artigos - Inicializacao Local
 
 echo ==========================================
@@ -13,6 +13,8 @@ set "FRONTEND_DIR=%ROOT_DIR%frontend"
 set "BACKEND_VENV_PY=%BACKEND_DIR%\venv\Scripts\python.exe"
 set "BACKEND_PORT=8000"
 set "FRONTEND_PORT="
+set "BACKEND_PID="
+set "BACKEND_CMD="
 
 for /f "usebackq delims=" %%P in (`powershell -NoProfile -Command "$ports = Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue | Where-Object { $_.LocalPort -ge 3000 -and $_.LocalPort -le 3005 } | Select-Object -ExpandProperty LocalPort -Unique | Sort-Object; [string]::Join(',', $ports)"`) do set "FRONTEND_PORTS_BEFORE=%%P"
 
@@ -55,13 +57,17 @@ if defined BACKEND_PID (
     for /f "usebackq delims=" %%C in (`powershell -NoProfile -Command "$p = Get-CimInstance Win32_Process -Filter \"ProcessId = %BACKEND_PID%\"; if ($p) { $p.CommandLine }"`) do set "BACKEND_CMD=%%C"
 
     echo Comando detectado:
-    echo %BACKEND_CMD%
+    if defined BACKEND_CMD (
+        echo !BACKEND_CMD!
+    ) else (
+        echo [indisponivel - o processo pode ter encerrado entre as verificacoes]
+    )
     echo.
 
-    echo %BACKEND_CMD% | find /I "post-generator\\backend" >nul
+    echo !BACKEND_CMD! | find /I "post-generator\\backend" >nul
     if %errorlevel% equ 0 (
         echo Instancia antiga do proprio backend detectada. Encerrando para reiniciar limpo...
-        powershell -NoProfile -Command "Stop-Process -Id %BACKEND_PID% -Force"
+        powershell -NoProfile -Command "if (Get-Process -Id %BACKEND_PID% -ErrorAction SilentlyContinue) { Stop-Process -Id %BACKEND_PID% -Force }"
         timeout /t 2 >nul
     ) else (
         echo [ERRO] A porta %BACKEND_PORT% esta ocupada por outro processo.
@@ -80,7 +86,7 @@ if not exist "%FRONTEND_DIR%\node_modules" (
     exit /b 0
 )
 
-start "BACKEND - FastAPI" cmd /k "cd /d "%BACKEND_DIR%" && "%BACKEND_VENV_PY%" -m uvicorn app.main:app --host 127.0.0.1 --reload --port %BACKEND_PORT% || pause"
+start "BACKEND - FastAPI" cmd /k "cd /d "%BACKEND_DIR%" && "%BACKEND_VENV_PY%" -m uvicorn app.main:app --host 127.0.0.1 --reload --reload-exclude data --port %BACKEND_PORT% || pause"
 start "FRONTEND - Next.js" cmd /k "cd /d "%FRONTEND_DIR%" && npm run dev || pause"
 
 for /L %%I in (1,1,20) do (
