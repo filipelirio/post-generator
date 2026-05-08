@@ -62,7 +62,7 @@ export default function SettingsPage() {
       setStatus(response.data);
       setError(null);
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Nao foi possivel carregar o diagnostico do fluxo editorial.");
+      setError(err.response?.data?.detail || "Não foi possível carregar o diagnóstico do fluxo editorial.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -77,9 +77,9 @@ export default function SettingsPage() {
     <div className="mx-auto max-w-5xl space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Configuracoes do fluxo editorial</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Configurações do fluxo editorial</h2>
           <p className="mt-1 text-sm text-slate-500">
-            Aqui fica o panorama real da operacao: GPT com web search, geracao de capas, planilha local,
+            Aqui fica o panorama real da operação: GPT com web search, geração de capas, planilha local,
             backups e WordPress.
           </p>
         </div>
@@ -90,7 +90,7 @@ export default function SettingsPage() {
           className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
         >
           <RefreshCw className={clsx("h-4 w-4", refreshing && "animate-spin")} />
-          {refreshing ? "Atualizando..." : "Atualizar diagnostico"}
+          {refreshing ? "Atualizando..." : "Atualizar diagnóstico"}
         </button>
       </div>
 
@@ -98,7 +98,7 @@ export default function SettingsPage() {
         <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="flex items-center gap-3 text-sm text-slate-500">
             <RefreshCw className="h-4 w-4 animate-spin" />
-            Carregando estado da aplicacao...
+            Carregando estado da aplicação...
           </div>
         </div>
       ) : null}
@@ -141,7 +141,7 @@ export default function SettingsPage() {
               </div>
               <StatusBadge
                 ok={status.image_generation_enabled}
-                label={status.image_generation_enabled ? "Prontas" : "Indisponiveis"}
+                label={status.image_generation_enabled ? "Prontas" : "Indisponíveis"}
               />
               <p className="mt-3 text-sm text-slate-600">
                 A capa pode ser gerada junto com o pacote do artigo e enviada ao WordPress.
@@ -172,21 +172,21 @@ export default function SettingsPage() {
 
               <div className="space-y-4 text-sm text-slate-700">
                 <div>
-                  <p className="font-semibold text-slate-900">Geracao de pautas</p>
+                  <p className="font-semibold text-slate-900">Geração de pautas</p>
                   <p className="mt-1 text-slate-600">
                     O GPT gera novas pautas com base no manual da Easy Medicina, na planilha local e em pesquisa web.
                   </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-900">Geracao de artigos</p>
+                  <p className="font-semibold text-slate-900">Geração de artigos</p>
                   <p className="mt-1 text-slate-600">
                     Cada artigo sai com corpo HTML, SEO para Yoast, links internos, links externos, CTA e capa.
                   </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-900">Publicacao</p>
+                  <p className="font-semibold text-slate-900">Publicação</p>
                   <p className="mt-1 text-slate-600">
-                    A review agora suporta rascunho e publicacao direta no WordPress a partir do mesmo pacote.
+                    A review agora suporta rascunho e publicação direta no WordPress a partir do mesmo pacote.
                   </p>
                 </div>
               </div>
@@ -218,7 +218,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <div>
-                  <p className="font-semibold text-slate-900">Backups automaticos</p>
+                  <p className="font-semibold text-slate-900">Backups automáticos</p>
                   <p className="mt-1 break-all rounded-lg bg-amber-50 px-3 py-2 text-amber-700">
                     {status.backups_dir}
                   </p>
@@ -230,25 +230,25 @@ export default function SettingsPage() {
           <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <FileSpreadsheet className="h-5 w-5 text-emerald-600" />
-              <h3 className="text-lg font-bold text-slate-900">O que esta versionado automaticamente</h3>
+              <h3 className="text-lg font-bold text-slate-900">O que está versionado automaticamente</h3>
             </div>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                 <p className="font-semibold text-slate-900">Planilha editorial</p>
                 <p className="mt-2 text-sm text-slate-600">
-                  Cada escrita da planilha cria um snapshot em backup para manter historico operacional.
+                  Cada escrita da planilha cria um snapshot em backup para manter histórico operacional.
                 </p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                 <p className="font-semibold text-slate-900">Pacotes do artigo</p>
                 <p className="mt-2 text-sm text-slate-600">
-                  Os arquivos de artigo, SEO e imagem sao salvos em versoes com timestamp.
+                  Os arquivos de artigo, SEO e imagem são salvos em versões com timestamp.
                 </p>
               </div>
               <div className="rounded-xl border border-slate-100 bg-slate-50 p-4">
                 <p className="font-semibold text-slate-900">Capas geradas</p>
                 <p className="mt-2 text-sm text-slate-600">
-                  As capas geradas pelo GPT tambem entram no trilho de backup para reaproveitamento futuro.
+                  As capas geradas pelo GPT também entram no trilho de backup para reaproveitamento futuro.
                 </p>
               </div>
             </div>
