@@ -7,6 +7,12 @@ from app.integrations.wordpress import wordpress_client
 
 
 class EditorialPublishService:
+    def _publication_timestamp(self, post: Dict) -> str:
+        wordpress_date = str(post.get("date", "") or "").strip()
+        if wordpress_date:
+            return wordpress_date
+        return datetime.now().isoformat(timespec="seconds")
+
     def _map_wordpress_status(self, wp_status: str) -> str:
         normalized = (wp_status or "").strip().lower()
         if normalized == "publish":
@@ -134,7 +140,7 @@ class EditorialPublishService:
                 "WordPress Post ID": str(post_id or ""),
             }
             if publish_status == "publish":
-                updates["Data publicacao"] = datetime.now().strftime("%Y-%m-%d")
+                updates["Data publicacao"] = self._publication_timestamp(response)
             excel_editorial_service.update_row(
                 str(resolved_pauta_id),
                 updates,
@@ -172,8 +178,10 @@ class EditorialPublishService:
                 updates["URL WordPress"] = post["link"]
             if post.get("id") and pauta.wordpress_post_id != str(post["id"]):
                 updates["WordPress Post ID"] = str(post["id"])
-            if desired_status == "Publicado" and not pauta.data_publicacao:
-                updates["Data publicacao"] = datetime.now().strftime("%Y-%m-%d")
+            if desired_status == "Publicado":
+                publication_timestamp = self._publication_timestamp(post)
+                if pauta.data_publicacao != publication_timestamp:
+                    updates["Data publicacao"] = publication_timestamp
 
             if updates:
                 excel_editorial_service.update_row(pauta.id, updates)

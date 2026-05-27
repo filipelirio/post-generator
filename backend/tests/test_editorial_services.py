@@ -129,6 +129,96 @@ class PublishServiceTests(unittest.TestCase):
         self.assertNotIn("Data publicacao", fake_excel.updates)
         self.assertEqual(fake_excel.updates["WordPress Post ID"], "42")
 
+    def test_publication_stores_wordpress_date_and_time(self) -> None:
+        service = EditorialPublishService()
+        package = {
+            "slug": "artigo-publicado",
+            "pauta_id": "8",
+            "title": "Titulo",
+            "content_html": "<p>Conteudo</p>",
+            "seo_title": "SEO",
+            "meta_desc": "Meta",
+            "focus_kw": "keyword",
+            "category": "",
+            "tags": [],
+            "image": {},
+        }
+        pauta = build_pauta("8")
+
+        class FakeWordPress:
+            def get_post_by_slug(self, slug, status="any"):
+                return None
+
+            def create_post(self, payload):
+                return {
+                    "id": 88,
+                    "link": "https://example.test/publicado",
+                    "featured_media": 0,
+                    "date": "2026-05-27T09:42:00",
+                }
+
+            def update_yoast(self, **kwargs):
+                return {}
+
+        class FakeExcel:
+            def __init__(self):
+                self.updates = {}
+
+            def get_pauta_by_id(self, pauta_id):
+                return pauta
+
+            def update_row(self, pauta_id, updates):
+                self.updates = updates
+
+        fake_excel = FakeExcel()
+        with (
+            patch("app.services.editorial_publish_service.editorial_file_service.find_slug_by_pauta_id", return_value="artigo-publicado"),
+            patch("app.services.editorial_publish_service.editorial_file_service.load_package", return_value=package),
+            patch("app.services.editorial_publish_service.wordpress_client", FakeWordPress()),
+            patch("app.services.editorial_publish_service.excel_editorial_service", fake_excel),
+        ):
+            service.publish(pauta_id="8", publish_status="publish")
+
+        self.assertEqual(fake_excel.updates["Data publicacao"], "2026-05-27T09:42:00")
+
+    def test_sync_refreshes_legacy_date_with_wordpress_publication_time(self) -> None:
+        service = EditorialPublishService()
+        pauta = build_pauta("1").model_copy(
+            update={
+                "status": "Publicado",
+                "url_wordpress": "https://example.test/artigo",
+                "data_publicacao": "2026-04-30",
+            }
+        )
+
+        class FakeWordPress:
+            def get_post_by_url(self, url):
+                return {
+                    "id": 1,
+                    "status": "publish",
+                    "link": url,
+                    "date": "2026-04-30T16:25:00",
+                }
+
+        class FakeExcel:
+            def __init__(self):
+                self.updates = {}
+
+            def list_pautas(self):
+                return [pauta]
+
+            def update_row(self, pauta_id, updates):
+                self.updates = updates
+
+        fake_excel = FakeExcel()
+        with (
+            patch("app.services.editorial_publish_service.wordpress_client", FakeWordPress()),
+            patch("app.services.editorial_publish_service.excel_editorial_service", fake_excel),
+        ):
+            service.sync_wordpress_status()
+
+        self.assertEqual(fake_excel.updates["Data publicacao"], "2026-04-30T16:25:00")
+
 
 class CronServiceTests(unittest.TestCase):
     class FakeExcel:

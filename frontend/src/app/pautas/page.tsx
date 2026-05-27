@@ -23,6 +23,30 @@ type EditorialPauta = {
   "URL WordPress": string;
 };
 
+function formatPublicationDate(value: string) {
+  if (!value) {
+    return "";
+  }
+
+  const hasTime = value.includes("T") || /\d{2}:\d{2}/.test(value);
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const parsedDate = new Date(hasTime ? normalized : `${normalized}T00:00:00`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return value;
+  }
+
+  const date = new Intl.DateTimeFormat("pt-BR", { dateStyle: "short" }).format(parsedDate);
+  if (!hasTime) {
+    return date;
+  }
+
+  const time = new Intl.DateTimeFormat("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(parsedDate);
+  return `${date} às ${time}`;
+}
+
 export default function PautasPage() {
   const [pautas, setPautas] = useState<EditorialPauta[]>([]);
   const [loading, setLoading] = useState(true);
@@ -218,9 +242,16 @@ export default function PautasPage() {
                       <div className="text-xs text-slate-500">{pauta["CTA sugerido"] || ""}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={clsx("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium", statusStyles[pauta.Status] || "bg-slate-100 text-slate-700 border-slate-200")}>
-                        {pauta.Status}
-                      </span>
+                      <div className="flex flex-col items-start gap-1.5">
+                        <span className={clsx("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium", statusStyles[pauta.Status] || "bg-slate-100 text-slate-700 border-slate-200")}>
+                          {pauta.Status}
+                        </span>
+                        {pauta.Status === "Publicado" && pauta["Data publicacao"] ? (
+                          <span className="whitespace-nowrap text-xs text-slate-500">
+                            Publicado em {formatPublicationDate(pauta["Data publicacao"])}
+                          </span>
+                        ) : null}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center justify-end gap-2">
