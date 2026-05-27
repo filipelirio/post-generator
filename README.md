@@ -1,38 +1,40 @@
 # Motor Editorial AI
 
-Aplicação local para operar um fluxo editorial com planilha Excel, GPT com web search, geração de imagem, revisão e publicação no WordPress com metadados de SEO.
+Aplicacao para operar um fluxo editorial com planilha Excel local, GPT com web search, geracao de imagem, revisao e publicacao no WordPress com metadados de SEO.
 
-O projeto foi desenhado para ser reaproveitado em diferentes blogs/clientes. A lógica fica no código; a identidade editorial, estratégia de SEO, prompts e credenciais ficam isolados em arquivos de referência e na página **Configurações**.
+O motor foi desenhado para ser reaproveitado em diferentes blogs/clientes. A logica fica no codigo; identidade editorial, estrategia de SEO, prompts e credenciais ficam isolados em `references/`, `.env` e na pagina **Configuracoes**.
 
 ## O que o app faz
 
-- Mantém a fila de pautas em uma planilha Excel local.
+- Mantem a fila de pautas em uma planilha Excel local.
 - Gera novas pautas com GPT e web search.
-- Gera artigos em HTML semântico para WordPress.
+- Gera artigos em HTML semantico para WordPress.
 - Gera briefing e capa automaticamente.
 - Mostra preview do artigo e da imagem.
 - Publica como rascunho ou direto no WordPress.
-- Prepara campos de SEO compatíveis com Yoast.
-- Sincroniza status, URL e data de publicação do WordPress.
-- Cria backups da planilha, artigos, imagens e documentos de configuração.
+- Prepara campos de SEO compativeis com Yoast.
+- Sincroniza status, URL e data de publicacao do WordPress.
+- Cria backups da planilha, artigos, imagens e documentos de configuracao.
 - Executa ciclos agendados via cron na VPS.
 
 ## Arquivos por cliente
 
-Para adaptar o motor a outro blog, edite estes arquivos ou use a tela **Configurações**:
+Para adaptar o motor a outro blog, edite estes arquivos ou use a tela **Configuracoes**:
 
-- [client_instructions.md](D:/ChatGPT/post-generator/references/client_instructions.md): marca, público, tom de voz, produtos, URLs oficiais, temas permitidos/proibidos e regras editoriais.
-- [seo_guidelines.md](D:/ChatGPT/post-generator/references/seo_guidelines.md): estratégia de SEO do cliente, critérios de qualidade, links internos, cornerstones e padrões de otimização.
-- [prompt_generate_pautas.md](D:/ChatGPT/post-generator/references/prompt_generate_pautas.md): template avançado para geração de pautas.
-- [prompt_generate_article.md](D:/ChatGPT/post-generator/references/prompt_generate_article.md): template avançado para geração de artigos.
+- `references/client_instructions.md`: marca, publico, tom de voz, produtos, URLs oficiais, temas permitidos/proibidos e regras editoriais.
+- `references/seo_guidelines.md`: estrategia de SEO do cliente, criterios de qualidade, links internos, cornerstones e padroes de otimizacao.
+- `references/prompt_generate_pautas.md`: template avancado para geracao de pautas.
+- `references/prompt_generate_article.md`: template avancado para geracao de artigos.
 
-Ao copiar o projeto para outro cliente, normalmente você só precisa trocar esses documentos, limpar ou substituir a planilha em `backend/data`, e configurar as credenciais no `.env` ou pela página **Configurações**.
+Ao copiar o projeto para outro cliente, normalmente voce so precisa trocar esses documentos, limpar ou substituir `backend/data/editorial_pautas.xlsx`, e configurar as credenciais no `.env` ou pela pagina **Configuracoes**.
 
-## Configurações sensíveis
+## Configuracao local
 
-As credenciais são gravadas no arquivo [`.env`](D:/ChatGPT/post-generator/.env), que não deve ser versionado.
+1. Crie o `.env` da raiz a partir de `backend/.env.example`.
+2. Opcionalmente crie `frontend/.env.local` a partir de `frontend/.env.example`.
+3. Nunca versione `.env`, `.env.local`, planilhas reais, imagens geradas ou artigos gerados.
 
-Campos principais:
+Campos principais do `.env`:
 
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
@@ -51,11 +53,11 @@ Campos principais:
 - `CRON_DRY_RUN`
 - `CRON_ALLOW_UNREVIEWED_PUBLISH`
 
-A API de configuração nunca devolve a chave da OpenAI, a senha de aplicação do WordPress ou o token do cron. Ela mostra apenas se esses valores já estão configurados.
+A API de configuracao nunca devolve a chave da OpenAI, a senha de aplicacao do WordPress ou o token do cron. Ela mostra apenas se esses valores ja estao configurados.
 
-## Como rodar localmente
+## Como rodar no Windows
 
-Use [Iniciar_Local.bat](D:/ChatGPT/post-generator/Iniciar_Local.bat).
+Use `Iniciar_Local.bat`.
 
 Ele sobe:
 
@@ -66,90 +68,183 @@ Ele sobe:
 Backend manual:
 
 ```powershell
-cd D:\ChatGPT\post-generator\backend
+cd backend
 .\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
 Frontend manual:
 
 ```powershell
-cd D:\ChatGPT\post-generator\frontend
+cd frontend
 npm run dev
 ```
 
 ## Fluxo editorial
 
-1. A fila editorial fica em [editorial_pautas.xlsx](D:/ChatGPT/post-generator/backend/data/editorial_pautas.xlsx).
-2. O botão **Gerar 10 Novas Pautas** cria novas pautas usando o GPT e web search.
+1. A fila editorial fica em `backend/data/editorial_pautas.xlsx`.
+2. O botao **Gerar 10 Novas Pautas** cria novas pautas usando GPT e web search.
 3. Cada pauta pode gerar um pacote com:
    - `artigo_[slug].txt`
    - `artigo_[slug]_seo.txt`
    - `artigo_[slug]_imagem.txt`
 4. A tela de review mostra artigo, SEO e imagem.
-5. O WordPress recebe conteúdo HTML, categoria, tags, Yoast e imagem destacada.
-6. A fila registra status, URL, post ID e data/hora de publicação.
+5. O WordPress recebe conteudo HTML, categoria, tags, Yoast e imagem destacada.
+6. A fila registra status, URL, post ID e data/hora de publicacao.
 
-## Páginas do painel
+## Paginas do painel
 
-- **Dashboard:** visão geral da operação.
-- **Pautas:** fila editorial, geração de pautas/artigos, publicação e sincronização WordPress.
-- **Saúde:** diagnóstico de GPT, web search, WordPress, cron, arquivos e backups.
-- **Configurações:** editor de instruções do cliente, SEO, prompts, APIs e automação.
+- **Dashboard:** visao geral da operacao.
+- **Pautas:** fila editorial, geracao de pautas/artigos, publicacao e sincronizacao WordPress.
+- **Saude:** diagnostico de GPT, web search, WordPress, cron, arquivos e backups.
+- **Configuracoes:** editor de instrucoes do cliente, SEO, prompts, APIs e automacao.
+
+## Deploy na VPS
+
+Exemplo usando Ubuntu, Nginx e systemd.
+
+### 1. Clonar
+
+```bash
+sudo mkdir -p /opt
+sudo git clone https://github.com/filipelirio/post-generator.git /opt/motor-editorial
+sudo chown -R www-data:www-data /opt/motor-editorial
+cd /opt/motor-editorial
+```
+
+### 2. Configurar variaveis
+
+```bash
+sudo cp backend/.env.example .env
+sudo nano .env
+```
+
+Em producao, ajuste pelo menos:
+
+```dotenv
+OPENAI_API_KEY="sua-chave"
+WORDPRESS_URL="https://seublog.com"
+WORDPRESS_USERNAME="usuario"
+WORDPRESS_APPLICATION_PASSWORD="xxxx xxxx xxxx xxxx xxxx"
+CORS_ORIGINS="https://artigos.seudominio.com"
+CRON_ENABLED="true"
+CRON_TOKEN="um-token-longo-e-privado"
+CRON_MODE="publish"
+CRON_MAX_ITEMS="1"
+CRON_SCHEDULE="0 20 * * 1,3,5"
+CRON_DRY_RUN="true"
+CRON_ALLOW_UNREVIEWED_PUBLISH="false"
+```
+
+### 3. Instalar backend
+
+```bash
+cd /opt/motor-editorial/backend
+sudo -u www-data python3 -m venv venv
+sudo -u www-data ./venv/bin/pip install -r requirements.txt
+```
+
+### 4. Instalar frontend
+
+```bash
+cd /opt/motor-editorial/frontend
+sudo -u www-data cp .env.example .env.local
+sudo -u www-data sed -i 's#NEXT_PUBLIC_API_URL="http://localhost:8000/api/v1"#NEXT_PUBLIC_API_URL="/api/v1"#' .env.local
+sudo -u www-data npm ci
+sudo -u www-data npm run build
+```
+
+### 5. Instalar systemd
+
+```bash
+sudo cp /opt/motor-editorial/deploy/systemd/motor-editorial-backend.service.example /etc/systemd/system/motor-editorial-backend.service
+sudo cp /opt/motor-editorial/deploy/systemd/motor-editorial-frontend.service.example /etc/systemd/system/motor-editorial-frontend.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now motor-editorial-backend
+sudo systemctl enable --now motor-editorial-frontend
+sudo systemctl status motor-editorial-backend --no-pager
+sudo systemctl status motor-editorial-frontend --no-pager
+```
+
+### 6. Configurar Nginx
+
+```bash
+sudo cp /opt/motor-editorial/deploy/nginx/motor-editorial.conf.example /etc/nginx/sites-available/motor-editorial
+sudo nano /etc/nginx/sites-available/motor-editorial
+sudo ln -s /etc/nginx/sites-available/motor-editorial /etc/nginx/sites-enabled/motor-editorial
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Recomendado: ativar HTTPS com Certbot e proteger o painel com Basic Auth ou Cloudflare Access.
 
 ## Cron job na VPS
 
-O app armazena a política do cron em `CRON_SCHEDULE`, mas quem agenda de verdade é o sistema operacional da VPS.
+O app armazena a politica do cron em `CRON_SCHEDULE`, mas quem agenda de verdade e o sistema operacional da VPS.
 
-Exemplo de `.env` para publicação direta em dias úteis às 07:00:
+Exemplo para segunda, quarta e sexta as 20:00:
 
 ```dotenv
-CRON_ENABLED="true"
-CRON_TOKEN="um-token-longo-aleatorio-e-privado"
-CRON_MODE="publish"
-CRON_MAX_ITEMS="1"
-CRON_SCHEDULE="0 7 * * 1-5"
-CRON_DRY_RUN="false"
-CRON_ALLOW_UNREVIEWED_PUBLISH="true"
+CRON_SCHEDULE="0 20 * * 1,3,5"
 ```
 
-Exemplo de crontab usando a mesma frequência:
+Crontab correspondente:
 
 ```cron
-0 7 * * 1-5 cd /opt/motor-editorial/backend && ./venv/bin/python scripts/run_cron.py --execute >> /var/log/motor-editorial-cron.log 2>&1
+0 20 * * 1,3,5 cd /opt/motor-editorial/backend && ./venv/bin/python scripts/run_cron.py --execute >> /var/log/motor-editorial-cron.log 2>&1
 ```
 
-Antes de ativar a execução real, rode sem `--execute` para simular:
+Antes de ativar execucao real, rode sem `--execute` para simular:
 
 ```bash
 cd /opt/motor-editorial/backend
 ./venv/bin/python scripts/run_cron.py --mode publish
 ```
 
-## Segurança para VPS
+Depois de validar, desative `CRON_DRY_RUN` e habilite `CRON_ALLOW_UNREVIEWED_PUBLISH` se quiser publicar direto:
 
-Não exponha este painel publicamente sem autenticação. Ele consegue gastar créditos de IA, alterar credenciais locais e publicar no WordPress.
+```dotenv
+CRON_DRY_RUN="false"
+CRON_ALLOW_UNREVIEWED_PUBLISH="true"
+```
 
-Recomendações:
+## Seguranca para VPS
 
-- Servir painel e `/api/` atrás de autenticação, como Nginx Basic Auth ou Cloudflare Access.
+Nao exponha este painel publicamente sem autenticacao. Ele consegue gastar creditos de IA, alterar credenciais locais e publicar no WordPress.
+
+Recomendacoes:
+
+- Servir painel e `/api/` atras de autenticacao, como Nginx Basic Auth ou Cloudflare Access.
 - Manter o FastAPI ouvindo apenas em `127.0.0.1`.
-- Usar apenas um worker enquanto a persistência for Excel local.
+- Usar apenas um worker enquanto a persistencia for Excel local.
 - Fazer backup externo de `backend/data`.
-- Definir `CORS_ORIGINS` somente com o domínio real do painel.
+- Definir `CORS_ORIGINS` somente com o dominio real do painel.
 
 ## Testes
 
-Os testes abaixo não geram pautas, não consomem créditos do GPT e não publicam conteúdo:
+Os testes abaixo nao geram pautas, nao consomem creditos do GPT e nao publicam conteudo:
 
 ```powershell
-cd D:\ChatGPT\post-generator\backend
+cd backend
 .\venv\Scripts\python.exe -m unittest discover -s tests -v
 .\venv\Scripts\python.exe scripts\smoke_test.py --include-wordpress
 
-cd D:\ChatGPT\post-generator\frontend
+cd ..\frontend
 npm run lint
 npm run build
 npm audit --audit-level=moderate
 ```
 
-O `smoke_test.py --include-wordpress` faz apenas leitura autenticada para validar a conexão com o WordPress.
+No Linux:
+
+```bash
+cd backend
+./venv/bin/python -m unittest discover -s tests -v
+./venv/bin/python scripts/smoke_test.py --include-wordpress
+
+cd ../frontend
+npm run lint
+npm run build
+npm audit --audit-level=moderate
+```
+
+O `smoke_test.py --include-wordpress` faz apenas leitura autenticada para validar a conexao com o WordPress.

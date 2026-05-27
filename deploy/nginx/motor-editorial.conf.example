@@ -1,0 +1,27 @@
+server {
+    listen 80;
+    server_name artigos.seudominio.com;
+
+    # Recomendado: usar HTTPS com Certbot e proteger com Basic Auth ou Cloudflare Access.
+    # auth_basic "Motor Editorial";
+    # auth_basic_user_file /etc/nginx/.htpasswd-motor-editorial;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 1800;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

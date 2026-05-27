@@ -1,0 +1,16 @@
+[Unit]
+Description=Motor Editorial AI - Backend FastAPI
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/motor-editorial/backend
+EnvironmentFile=/opt/motor-editorial/.env
+ExecStart=/opt/motor-editorial/backend/venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+User=www-data
+Group=www-data
+
+[Install]
+WantedBy=multi-user.target
