@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Literal
 
 from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
@@ -44,6 +45,12 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = ",".join(
         f"http://localhost:{port}" for port in range(3000, 3006)
     )
+    CRON_ENABLED: bool = False
+    CRON_TOKEN: str = ""
+    CRON_MODE: Literal["generate_only", "draft", "publish"] = "generate_only"
+    CRON_MAX_ITEMS: int = 1
+    CRON_DRY_RUN: bool = True
+    CRON_ALLOW_UNREVIEWED_PUBLISH: bool = False
 
     @property
     def cors_origins(self) -> list[str]:

@@ -12,6 +12,7 @@ Aplicação para operar o fluxo editorial do blog Easy Medicina localmente e, fu
 - publica no WordPress com Yoast e imagem destacada
 - sincroniza status do WordPress de volta para a planilha
 - cria backups da planilha, dos artigos e das imagens
+- executa ciclos agendados na VPS com token e modo seguro
 
 ## Estrutura principal
 
@@ -30,6 +31,8 @@ backend/
       article_package_service.py
       editorial_file_service.py
       editorial_publish_service.py
+      editorial_article_service.py
+      editorial_cron_service.py
       excel_editorial_service.py
       openai_editorial_service.py
       openai_image_service.py
@@ -85,6 +88,7 @@ references/
 - `GET /api/v1/editorial/articles/{pauta_id}`
 - `GET /api/v1/editorial/articles/{pauta_id}/image`
 - `POST /api/v1/editorial/articles/publish`
+- `POST /api/v1/editorial/automation/run` (uso interno, exige `X-Cron-Token`)
 
 ## Variáveis de ambiente
 
@@ -100,6 +104,12 @@ Campos principais:
 - `WORDPRESS_URL`
 - `WORDPRESS_USERNAME`
 - `WORDPRESS_APPLICATION_PASSWORD`
+- `CRON_ENABLED`
+- `CRON_TOKEN`
+- `CRON_MODE`
+- `CRON_MAX_ITEMS`
+- `CRON_DRY_RUN`
+- `CRON_ALLOW_UNREVIEWED_PUBLISH`
 
 Os caminhos de planilha e pastas de output já apontam para `backend/data` por padrão.
 
@@ -166,6 +176,50 @@ npm audit --audit-level=moderate
 
 O `smoke_test.py --include-wordpress` apenas testa leitura da conexão autenticada do WordPress.
 
+## Cron job na VPS
+
+O cron chama o backend local já em execução; ele não escreve diretamente na planilha. Isso mantém a mesma trava de escrita usada pelo dashboard e pressupõe um único worker FastAPI.
+
+Modos disponíveis:
+
+- `generate_only`: gera pacote e capa para a próxima pauta `Pendente`, sem acessar publicação do WordPress.
+- `draft`: transforma uma pauta `Em producao` ou `Pendente` em rascunho no WordPress; ao receber uma pauta pendente, gera o pacote antes.
+- `publish`: por padrão, publica apenas uma pauta que já esteja em `Rascunho`.
+
+Configure no `.env` da VPS:
+
+```dotenv
+CRON_ENABLED="true"
+CRON_TOKEN="um-token-longo-aleatorio-e-privado"
+CRON_MODE="draft"
+CRON_MAX_ITEMS="1"
+CRON_DRY_RUN="true"
+CRON_ALLOW_UNREVIEWED_PUBLISH="false"
+```
+
+O comando sempre simula enquanto não receber `--execute`. Além disso, o backend bloqueia a execução enquanto `CRON_DRY_RUN="true"`. Depois de validar a simulação, altere essa variável para `false` antes de programar o cron:
+
+```bash
+cd /opt/easy-artigos/backend
+./venv/bin/python scripts/run_cron.py --mode draft
+# Depois de definir CRON_DRY_RUN="false":
+./venv/bin/python scripts/run_cron.py --mode draft --max-items 1 --execute
+```
+
+Exemplo de agendamento que cria no máximo um rascunho por dia útil, às 07:00:
+
+```cron
+0 7 * * 1-5 cd /opt/easy-artigos/backend && ./venv/bin/python scripts/run_cron.py --mode draft --max-items 1 --execute >> /var/log/easy-artigos-cron.log 2>&1
+```
+
+Para publicar automaticamente um rascunho já revisado:
+
+```cron
+0 8 * * 1-5 cd /opt/easy-artigos/backend && ./venv/bin/python scripts/run_cron.py --mode publish --max-items 1 --execute >> /var/log/easy-artigos-publish.log 2>&1
+```
+
+Não use `--allow-unreviewed-publish` no cron normal: essa opção permite levar conteúdo ainda não revisado diretamente ao ar e exige também `CRON_ALLOW_UNREVIEWED_PUBLISH="true"`.
+
 ## Preparação para VPS
 
 Este projeto ainda não deve ser colocado publicamente na internet sem uma camada de autenticação. O painel aciona geração paga com GPT e publicação no WordPress.
@@ -178,7 +232,7 @@ Requisitos para o deploy:
 - Persistir e fazer backup externo de `backend/data`.
 - Configurar `CORS_ORIGINS` apenas com o domínio real do painel.
 
-O cron job automático ainda é o próximo módulo: hoje o painel permite executar as etapas manualmente, mas não existe um comando agendável que selecione pautas e publique sem revisão.
+O cron job deve chamar somente `http://127.0.0.1:8000` e utilizar `CRON_TOKEN`. Por segurança, mantenha o modo `draft` durante a primeira fase na VPS e publique apenas depois da revisão no painel.
 
 ## Estado atual
 

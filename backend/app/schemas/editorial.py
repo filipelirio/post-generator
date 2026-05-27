@@ -119,6 +119,29 @@ class SyncWordPressStatusResponse(BaseModel):
     message: str
 
 
+class AutomationRunRequest(BaseModel):
+    mode: Literal["generate_only", "draft", "publish"] = "generate_only"
+    max_items: int = Field(default=1, ge=1, le=5)
+    dry_run: bool = True
+    allow_unreviewed_publish: bool = False
+
+
+class AutomationAction(BaseModel):
+    pauta_id: str
+    previous_status: str
+    action: str
+    resulting_status: Optional[str] = None
+    details: str = ""
+
+
+class AutomationRunResponse(BaseModel):
+    mode: Literal["generate_only", "draft", "publish"]
+    dry_run: bool
+    processed_count: int
+    actions: List[AutomationAction] = Field(default_factory=list)
+    errors: List[str] = Field(default_factory=list)
+
+
 class EditorialSystemStatusResponse(BaseModel):
     openai_configured: bool
     image_generation_enabled: bool
@@ -130,3 +153,7 @@ class EditorialSystemStatusResponse(BaseModel):
     generated_articles_dir: str
     generated_images_dir: str
     backups_dir: str
+    cron_enabled: bool
+    cron_mode: Literal["generate_only", "draft", "publish"]
+    cron_dry_run: bool
+    cron_max_items: int

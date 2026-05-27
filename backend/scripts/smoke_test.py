@@ -32,6 +32,15 @@ def main() -> int:
         if response.status_code != 200:
             failed = True
             print(response.text[:500])
+        elif endpoint.endswith("/system/status"):
+            payload = response.json()
+            wordpress_status = "conectado" if payload.get("wordpress_connection_ok") else "indisponivel"
+            cron_status = "habilitado" if payload.get("cron_enabled") else "desligado"
+            print(
+                "INFO: WordPress "
+                f"{wordpress_status}; cron {cron_status} "
+                f"(modo={payload.get('cron_mode')}, dry_run={payload.get('cron_dry_run')})."
+            )
 
     return 1 if failed else 0
 

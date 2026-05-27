@@ -10,7 +10,8 @@ from pydantic import ValidationError
 from app.core.config import settings
 from app.integrations.wordpress import WordPressClient
 from app.main import app
-from app.schemas.editorial import PublishArticleRequest, SheetPauta
+from app.schemas.editorial import AutomationRunRequest, AutomationRunResponse, PublishArticleRequest, SheetPauta
+from app.services.editorial_cron_service import EditorialCronService
 from app.services.editorial_publish_service import EditorialPublishService
 from app.services.excel_editorial_service import ExcelEditorialService
 from app.services.html_sanitizer_service import sanitize_html
@@ -127,6 +128,136 @@ class PublishServiceTests(unittest.TestCase):
         self.assertEqual(result["post_id"], 42)
         self.assertNotIn("Data publicacao", fake_excel.updates)
         self.assertEqual(fake_excel.updates["WordPress Post ID"], "42")
+
+
+class CronServiceTests(unittest.TestCase):
+    class FakeExcel:
+        def __init__(self, pautas):
+            self.pautas = pautas
+
+        def list_pautas(self):
+            return self.pautas
+
+    class FakeArticle:
+        def __init__(self):
+            self.generated = []
+
+        def generate(self, pauta_id):
+            self.generated.append(pauta_id)
+
+    class FakePublish:
+        def __init__(self):
+            self.published = []
+
+        def publish(self, pauta_id, publish_status):
+            self.published.append((pauta_id, publish_status))
+            return {"message": "ok"}
+
+    def test_dry_run_has_no_side_effects(self) -> None:
+        article = self.FakeArticle()
+        publisher = self.FakePublish()
+        service = EditorialCronService(
+            excel_service=self.FakeExcel([build_pauta("1")]),
+            article_service=article,
+            publish_service=publisher,
+        )
+
+        result = service.run(AutomationRunRequest(mode="draft", dry_run=True))
+
+        self.assertEqual(result.actions[0].action, "would_create_wordpress_draft")
+        self.assertEqual(article.generated, [])
+        self.assertEqual(publisher.published, [])
+
+    def test_publish_only_selects_existing_draft_by_default(self) -> None:
+        article = self.FakeArticle()
+        publisher = self.FakePublish()
+        pending = build_pauta("1")
+        draft = build_pauta("2").model_copy(update={"status": "Rascunho"})
+        service = EditorialCronService(
+            excel_service=self.FakeExcel([pending, draft]),
+            article_service=article,
+            publish_service=publisher,
+        )
+
+        result = service.run(AutomationRunRequest(mode="publish", dry_run=False))
+
+        self.assertEqual(result.actions[0].pauta_id, "2")
+        self.assertEqual(publisher.published, [("2", "publish")])
+        self.assertEqual(article.generated, [])
+
+    def test_draft_generates_pending_article_before_creating_wordpress_draft(self) -> None:
+        article = self.FakeArticle()
+        publisher = self.FakePublish()
+        service = EditorialCronService(
+            excel_service=self.FakeExcel([build_pauta("3")]),
+            article_service=article,
+            publish_service=publisher,
+        )
+
+        result = service.run(AutomationRunRequest(mode="draft", dry_run=False))
+
+        self.assertEqual(result.actions[0].resulting_status, "Rascunho")
+        self.assertEqual(article.generated, ["3"])
+        self.assertEqual(publisher.published, [("3", "draft")])
+
+
+class CronEndpointTests(unittest.TestCase):
+    def test_automation_endpoint_requires_token(self) -> None:
+        client = TestClient(app)
+        with (
+            patch.object(settings, "CRON_ENABLED", True),
+            patch.object(settings, "CRON_TOKEN", "segredo"),
+        ):
+            response = client.post("/api/v1/editorial/automation/run", json={"dry_run": True})
+
+        self.assertEqual(response.status_code, 401)
+
+    def test_automation_endpoint_runs_with_valid_token(self) -> None:
+        client = TestClient(app)
+        expected = AutomationRunResponse(mode="generate_only", dry_run=True, processed_count=0)
+        with (
+            patch.object(settings, "CRON_ENABLED", True),
+            patch.object(settings, "CRON_TOKEN", "segredo"),
+            patch("app.api.v1.editorial.editorial_cron_service.run", return_value=expected),
+        ):
+            response = client.post(
+                "/api/v1/editorial/automation/run",
+                json={"dry_run": True},
+                headers={"X-Cron-Token": "segredo"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["dry_run"])
+
+    def test_automation_endpoint_blocks_execution_while_dry_run_setting_is_enabled(self) -> None:
+        client = TestClient(app)
+        with (
+            patch.object(settings, "CRON_ENABLED", True),
+            patch.object(settings, "CRON_TOKEN", "segredo"),
+            patch.object(settings, "CRON_DRY_RUN", True),
+        ):
+            response = client.post(
+                "/api/v1/editorial/automation/run",
+                json={"dry_run": False},
+                headers={"X-Cron-Token": "segredo"},
+            )
+
+        self.assertEqual(response.status_code, 409)
+
+    def test_automation_endpoint_blocks_unreviewed_publication_by_default(self) -> None:
+        client = TestClient(app)
+        with (
+            patch.object(settings, "CRON_ENABLED", True),
+            patch.object(settings, "CRON_TOKEN", "segredo"),
+            patch.object(settings, "CRON_ALLOW_UNREVIEWED_PUBLISH", False),
+        ):
+            response = client.post(
+                "/api/v1/editorial/automation/run",
+                json={"dry_run": True, "mode": "publish", "allow_unreviewed_publish": True},
+                headers={"X-Cron-Token": "segredo"},
+            )
+
+        self.assertEqual(response.status_code, 409)
 
 
 if __name__ == "__main__":

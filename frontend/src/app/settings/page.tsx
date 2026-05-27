@@ -28,6 +28,10 @@ type SystemStatus = {
   generated_articles_dir: string;
   generated_images_dir: string;
   backups_dir: string;
+  cron_enabled: boolean;
+  cron_mode: "generate_only" | "draft" | "publish";
+  cron_dry_run: boolean;
+  cron_max_items: number;
 };
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
@@ -171,6 +175,14 @@ export default function SettingsPage() {
               </div>
 
               <div className="space-y-4 text-sm text-slate-700">
+                <div>
+                  <p className="font-semibold text-slate-900">Cron job para VPS</p>
+                  <p className="mt-1 text-slate-600">
+                    {status.cron_enabled
+                      ? `Habilitado em modo ${status.cron_mode}, limite de ${status.cron_max_items} item(ns) por ciclo${status.cron_dry_run ? " (simulação)" : ""}.`
+                      : "Desligado. Ative somente após configurar token e revisar o modo de execução."}
+                  </p>
+                </div>
                 <div>
                   <p className="font-semibold text-slate-900">Geração de pautas</p>
                   <p className="mt-1 text-slate-600">

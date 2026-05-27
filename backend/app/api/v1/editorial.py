@@ -1,4 +1,6 @@
-from fastapi import APIRouter, HTTPException
+import secrets
+
+from fastapi import APIRouter, Header, HTTPException
 from fastapi.responses import FileResponse
 
 from app.core.config import settings
@@ -6,6 +8,8 @@ from app.integrations.wordpress import wordpress_client
 from app.schemas.editorial import (
     ArticleDetailResponse,
     ArticlePackageResponse,
+    AutomationRunRequest,
+    AutomationRunResponse,
     EditorialSystemStatusResponse,
     GeneratePautasRequest,
     GeneratePautasResponse,
@@ -13,10 +17,10 @@ from app.schemas.editorial import (
     PublishArticleResponse,
     SyncWordPressStatusResponse,
 )
-from app.services.article_package_service import article_package_service
 from app.services.excel_editorial_service import excel_editorial_service
 from app.services.editorial_file_service import editorial_file_service
-from app.services.openai_image_service import openai_image_service
+from app.services.editorial_article_service import PautaNotFoundError, editorial_article_service
+from app.services.editorial_cron_service import editorial_cron_service
 from app.services.editorial_publish_service import editorial_publish_service
 from app.services.openai_editorial_service import openai_editorial_service
 
@@ -39,6 +43,10 @@ def get_editorial_system_status():
         generated_articles_dir=settings.GENERATED_ARTICLES_DIR,
         generated_images_dir=settings.GENERATED_IMAGES_DIR,
         backups_dir=settings.BACKUPS_DIR,
+        cron_enabled=settings.CRON_ENABLED,
+        cron_mode=settings.CRON_MODE,
+        cron_dry_run=settings.CRON_DRY_RUN,
+        cron_max_items=settings.CRON_MAX_ITEMS,
     )
 
 
@@ -86,30 +94,10 @@ def sync_excel_pautas_with_wordpress():
 
 @router.post("/articles/{pauta_id}/generate", response_model=ArticlePackageResponse)
 def generate_article_from_excel(pauta_id: str):
-    pauta = excel_editorial_service.get_pauta_by_id(pauta_id)
-    if not pauta:
-        raise HTTPException(status_code=404, detail="Pauta nao encontrada na planilha Excel")
     try:
-        article_payload = openai_editorial_service.generate_article_package(pauta)
-        article_payload["pauta_id"] = article_payload.get("pauta_id") or pauta.id
-        article_payload["categoria"] = pauta.categoria
-        image_prompt = article_payload.get("imagem_prompt", "").strip()
-        if image_prompt:
-            image_path = openai_image_service.generate_cover(article_payload["slug"], image_prompt)
-            article_payload["imagem_tipo"] = "local"
-            article_payload["imagem_caminho"] = image_path
-            article_payload["imagem_url"] = ""
-        written = article_package_service.write_package(article_payload)
-        excel_editorial_service.update_row(pauta_id, {"Status": "Em producao"})
-        return ArticlePackageResponse(
-            slug=written["slug"],
-            article_file=written["article_file"],
-            seo_file=written["seo_file"],
-            image_file=written["image_file"],
-            preview_html=article_payload["preview_html"],
-            title=article_payload["titulo"],
-            focus_keyword=article_payload["focus_kw"],
-        )
+        return editorial_article_service.generate(pauta_id)
+    except PautaNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc))
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar artigo: {exc}")
 
@@ -152,3 +140,29 @@ def publish_article(payload: PublishArticleRequest):
         return PublishArticleResponse(**result)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erro ao publicar artigo: {exc}")
+
+
+@router.post("/automation/run", response_model=AutomationRunResponse)
+def run_editorial_automation(payload: AutomationRunRequest, x_cron_token: str | None = Header(default=None)):
+    if not settings.CRON_ENABLED:
+        raise HTTPException(status_code=503, detail="Automacao editorial desabilitada. Configure CRON_ENABLED=true.")
+    if not settings.CRON_TOKEN:
+        raise HTTPException(status_code=503, detail="CRON_TOKEN nao configurado no backend.")
+    if not x_cron_token or not secrets.compare_digest(x_cron_token, settings.CRON_TOKEN):
+        raise HTTPException(status_code=401, detail="Token da automacao invalido.")
+    if not payload.dry_run and settings.CRON_DRY_RUN:
+        raise HTTPException(
+            status_code=409,
+            detail="Execucao bloqueada por CRON_DRY_RUN=true. Valide a simulacao e altere a configuracao para executar.",
+        )
+    if payload.allow_unreviewed_publish and not settings.CRON_ALLOW_UNREVIEWED_PUBLISH:
+        raise HTTPException(
+            status_code=409,
+            detail="Publicacao sem revisao bloqueada por CRON_ALLOW_UNREVIEWED_PUBLISH=false.",
+        )
+    try:
+        return editorial_cron_service.run(payload)
+    except RuntimeError as exc:
+        raise HTTPException(status_code=409, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erro ao executar automacao editorial: {exc}")
