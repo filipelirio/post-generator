@@ -6,7 +6,7 @@ import { Search, Filter, Eye, Sparkles, Clock3, CheckCircle2, FileText, Loader2,
 import clsx from "clsx";
 import { toast } from "react-hot-toast";
 
-import api from "@/lib/api";
+import api, { getApiErrorMessage } from "@/lib/api";
 
 type EditorialPauta = {
   ID: string;
@@ -68,8 +68,8 @@ export default function PautasPage() {
       const response = await api.post("/editorial/pautas/generate", { count: 10 });
       toast.success(`${response.data.created_count} pautas criadas.`, { id: toastId });
       fetchPautas();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Erro ao gerar pautas.", { id: toastId });
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Erro ao gerar pautas."), { id: toastId });
     } finally {
       setGeneratingPautas(false);
     }
@@ -82,8 +82,8 @@ export default function PautasPage() {
       const response = await api.post("/editorial/pautas/sync-wordpress");
       toast.success(response.data.message || "Status sincronizados.", { id: toastId });
       await fetchPautas();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Erro ao sincronizar status.", { id: toastId });
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Erro ao sincronizar status."), { id: toastId });
     } finally {
       setSyncingStatuses(false);
     }
@@ -97,9 +97,9 @@ export default function PautasPage() {
       toast.success("Artigo gerado com sucesso.", { id: toastId });
       await fetchPautas();
       window.location.href = `/pautas/${id}/review`;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao gerar artigo:", error);
-      toast.error(error.response?.data?.detail || "Erro na geração do artigo.", { id: toastId });
+      toast.error(getApiErrorMessage(error, "Erro na geração do artigo."), { id: toastId });
     } finally {
       setGeneratingArticleId(null);
     }

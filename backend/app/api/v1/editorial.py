@@ -67,7 +67,9 @@ def generate_excel_pautas(payload: GeneratePautasRequest):
         existing = excel_editorial_service.list_pautas()
         next_id = excel_editorial_service.next_id()
         created = openai_editorial_service.generate_pautas(payload, existing, next_id)
-        excel_editorial_service.append_pautas(created)
+        if not created:
+            raise ValueError("O modelo nao retornou nenhuma pauta valida.")
+        created = excel_editorial_service.append_pautas(created, assign_new_ids=True)
         return GeneratePautasResponse(created_count=len(created), pautas=created)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erro ao gerar pautas na planilha Excel: {exc}")

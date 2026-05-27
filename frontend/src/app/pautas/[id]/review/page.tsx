@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, use } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -16,7 +17,7 @@ import {
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-import api from "@/lib/api";
+import api, { getApiErrorMessage, isApiNotFoundError } from "@/lib/api";
 
 interface ReviewPageProps {
   params: Promise<{ id: string }>;
@@ -73,13 +74,20 @@ export default function ReviewPage({ params }: ReviewPageProps) {
         const pautaRes = await api.get(`/editorial/pautas/${id}`);
         setPauta(pautaRes.data);
 
+        if (pautaRes.data.Status === "Publicado" && pautaRes.data["URL WordPress"]) {
+          setArticle(null);
+          setArticleUnavailable(true);
+          setImagePreviewError(true);
+          return;
+        }
+
         try {
-          const articleRes = await api.get(`/editorial/articles/${id}`);
+          const articleRes = await api.get(`/editorial/articles/${id}`, { suppressErrorLog: true });
           setArticle(articleRes.data);
           setArticleUnavailable(false);
           setImagePreviewError(false);
-        } catch (articleError: any) {
-          if (articleError.response?.status === 404) {
+        } catch (articleError: unknown) {
+          if (isApiNotFoundError(articleError)) {
             setArticle(null);
             setArticleUnavailable(true);
             setImagePreviewError(true);
@@ -138,9 +146,9 @@ export default function ReviewPage({ params }: ReviewPageProps) {
       }
 
       router.push("/pautas");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Erro ao publicar:", error);
-      toast.error(error.response?.data?.detail || "Erro ao publicar no WordPress.", { id: toastId });
+      toast.error(getApiErrorMessage(error, "Erro ao publicar no WordPress."), { id: toastId });
     } finally {
       setPublishingMode(null);
     }
@@ -344,9 +352,12 @@ export default function ReviewPage({ params }: ReviewPageProps) {
             <div className="space-y-4 text-sm text-slate-700">
               {imagePreviewUrl && !imagePreviewError ? (
                 <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
-                  <img
+                  <Image
                     src={imagePreviewUrl}
                     alt={article?.image?.alt || article?.title || "Capa gerada"}
+                    width={1536}
+                    height={1024}
+                    unoptimized
                     className="h-auto w-full object-cover"
                     onError={() => setImagePreviewError(true)}
                   />

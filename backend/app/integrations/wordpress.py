@@ -38,25 +38,35 @@ class WordPressClient:
     def _api(self, endpoint: str) -> str:
         return f"{self.api_url}/{endpoint.lstrip('/')}"
 
-    def _request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
+    def _request(
+        self,
+        method: str,
+        endpoint: str,
+        *,
+        retries: Optional[int] = None,
+        timeout: Optional[int] = None,
+        **kwargs,
+    ) -> requests.Response:
         last_error: Optional[Exception] = None
         headers = kwargs.pop("headers", self._headers())
         url = self._api(endpoint)
+        is_safe_read = method.upper() in {"GET", "HEAD", "OPTIONS"}
+        attempts = retries if retries is not None else (self.request_retries if is_safe_read else 1)
 
-        for attempt in range(1, self.request_retries + 1):
+        for attempt in range(1, attempts + 1):
             try:
                 response = requests.request(
                     method,
                     url,
                     headers=headers,
-                    timeout=self.request_timeout,
+                    timeout=timeout or self.request_timeout,
                     **kwargs,
                 )
                 response.raise_for_status()
                 return response
             except requests.RequestException as exc:
                 last_error = exc
-                if attempt < self.request_retries:
+                if attempt < attempts:
                     time.sleep(self.retry_delay)
 
         raise Exception(f"Erro ao acessar WordPress em {url}: {last_error}")
@@ -78,7 +88,7 @@ class WordPressClient:
 
     def test_connection(self) -> bool:
         try:
-            response = self._request("GET", "users/me")
+            response = self._request("GET", "users/me", retries=1, timeout=5)
             return response.status_code == 200
         except Exception:
             return False
@@ -96,7 +106,7 @@ class WordPressClient:
 
     def get_post_by_slug(self, slug: str, status: str = "any") -> Optional[Dict[str, Any]]:
         params: Dict[str, Any] = {"slug": slug}
-        if status and status != "any":
+        if status:
             params["status"] = status
         response = self._request("GET", "posts", params=params)
         posts = response.json()

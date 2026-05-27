@@ -37,7 +37,10 @@ class EditorialPublishService:
                 continue
         return tag_ids
 
-    def _attach_featured_image(self, post_id: int, package: Dict) -> Dict:
+    def _attach_featured_image(self, post_id: int, package: Dict, featured_media: int = 0) -> Dict:
+        if featured_media:
+            return {"status": "mantida", "media_id": featured_media, "source": "wordpress"}
+
         image = package.get("image", {}) or {}
         image_url = image.get("url", "").strip()
         image_path = image.get("path", "").strip()
@@ -84,6 +87,15 @@ class EditorialPublishService:
             except ValueError:
                 warnings.append(f"WordPress Post ID invalido na planilha: {pauta.wordpress_post_id}")
 
+        if not existing_post_id:
+            try:
+                existing_post = wordpress_client.get_post_by_slug(package["slug"], status="any")
+                if existing_post:
+                    existing_post_id = int(existing_post["id"])
+                    warnings.append("Post existente encontrado pelo slug e atualizado, evitando duplicidade.")
+            except Exception as exc:
+                warnings.append(f"Nao foi possivel verificar slug existente: {exc}")
+
         if existing_post_id:
             response = wordpress_client.update_post(existing_post_id, post_data)
         else:
@@ -109,21 +121,23 @@ class EditorialPublishService:
             warnings.append(f"Yoast nao atualizado: {exc}")
 
         try:
-            image_result = self._attach_featured_image(post_id, package)
+            image_result = self._attach_featured_image(post_id, package, response.get("featured_media", 0))
         except Exception as exc:
             image_result = {"status": "falhou"}
             warnings.append(f"Imagem destacada nao aplicada: {exc}")
 
         resolved_pauta_id = package.get("pauta_id") or pauta_id
         if resolved_pauta_id:
+            updates = {
+                "Status": "Publicado" if publish_status == "publish" else "Rascunho",
+                "URL WordPress": response.get("link", ""),
+                "WordPress Post ID": str(post_id or ""),
+            }
+            if publish_status == "publish":
+                updates["Data publicacao"] = datetime.now().strftime("%Y-%m-%d")
             excel_editorial_service.update_row(
                 str(resolved_pauta_id),
-                {
-                    "Status": "Publicado" if publish_status == "publish" else "Rascunho",
-                    "Data publicacao": datetime.now().strftime("%Y-%m-%d"),
-                    "URL WordPress": response.get("link", ""),
-                    "WordPress Post ID": str(post_id or ""),
-                },
+                updates,
             )
 
         return {

@@ -5,7 +5,7 @@ import { BarChart, FileText, CheckCircle, Clock3, List, Sparkles } from "lucide-
 import Link from "next/link";
 import { toast } from "react-hot-toast";
 
-import api from "@/lib/api";
+import api, { getApiErrorMessage } from "@/lib/api";
 
 type EditorialPauta = {
   ID: string;
@@ -41,8 +41,8 @@ export default function DashboardPage() {
       const response = await api.post("/editorial/pautas/generate", { count: 10 });
       toast.success(`${response.data.created_count} pautas criadas com sucesso.`, { id: toastId });
       fetchPautas();
-    } catch (error: any) {
-      toast.error(error.response?.data?.detail || "Erro ao gerar pautas.", { id: toastId });
+    } catch (error: unknown) {
+      toast.error(getApiErrorMessage(error, "Erro ao gerar pautas."), { id: toastId });
     } finally {
       setGenerating(false);
     }

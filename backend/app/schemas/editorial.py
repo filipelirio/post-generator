@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict, Field
-from typing import List, Optional
+from typing import List, Literal, Optional
 
 
 SHEET_COLUMNS = [
@@ -101,7 +101,7 @@ class ArticleDetailResponse(BaseModel):
 class PublishArticleRequest(BaseModel):
     slug: Optional[str] = None
     pauta_id: Optional[str] = None
-    publish_status: str = "draft"
+    publish_status: Literal["draft", "publish"] = "draft"
 
 
 class PublishArticleResponse(BaseModel):

@@ -26,7 +26,7 @@ class HTMLSanitizer(HTMLParser):
         "td",
         "a",
     }
-    allowed_anchor_attrs = {"href", "target", "rel"}
+    allowed_anchor_attrs = {"href"}
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import clsx from "clsx";
 
-import api from "@/lib/api";
+import api, { getApiErrorMessage } from "@/lib/api";
 
 type SystemStatus = {
   openai_configured: boolean;
@@ -61,8 +61,8 @@ export default function SettingsPage() {
       const response = await api.get("/editorial/system/status");
       setStatus(response.data);
       setError(null);
-    } catch (err: any) {
-      setError(err.response?.data?.detail || "Não foi possível carregar o diagnóstico do fluxo editorial.");
+    } catch (err: unknown) {
+      setError(getApiErrorMessage(err, "Não foi possível carregar o diagnóstico do fluxo editorial."));
     } finally {
       setLoading(false);
       setRefreshing(false);

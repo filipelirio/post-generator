@@ -41,6 +41,13 @@ class Settings(BaseSettings):
     DEFAULT_POST_STATUS: str = "draft"
 
     LOG_LEVEL: str = "INFO"
+    CORS_ORIGINS: str = ",".join(
+        f"http://localhost:{port}" for port in range(3000, 3006)
+    )
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",") if origin.strip()]
 
     model_config = ConfigDict(
         env_file=(str(ROOT_ENV_FILE), str(BACKEND_ENV_FILE)),

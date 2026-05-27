@@ -1,14 +1,14 @@
 # Easy Artigos - Easy Medicina
 
-Aplicacao local para operar o fluxo editorial do blog Easy Medicina.
+Aplicação para operar o fluxo editorial do blog Easy Medicina localmente e, futuramente, em uma VPS privada.
 
 ## O que o app faz
 
-- mantem a fila de pautas em uma planilha Excel local
+- mantém a fila de pautas em uma planilha Excel local
 - gera novas pautas com GPT + web search
 - gera artigo em HTML para WordPress
 - gera capa automaticamente
-- mostra preview no dashboard
+- mostra preview no dashboard responsivo
 - publica no WordPress com Yoast e imagem destacada
 - sincroniza status do WordPress de volta para a planilha
 - cria backups da planilha, dos artigos e das imagens
@@ -86,7 +86,7 @@ references/
 - `GET /api/v1/editorial/articles/{pauta_id}/image`
 - `POST /api/v1/editorial/articles/publish`
 
-## Variaveis de ambiente
+## Variáveis de ambiente
 
 O backend le:
 - [`.env`](D:/ChatGPT/post-generator/.env)
@@ -101,7 +101,12 @@ Campos principais:
 - `WORDPRESS_USERNAME`
 - `WORDPRESS_APPLICATION_PASSWORD`
 
-Os caminhos de planilha e pastas de output ja apontam para `backend/data` por padrao.
+Os caminhos de planilha e pastas de output já apontam para `backend/data` por padrão.
+
+Para uma VPS, defina também:
+
+- `CORS_ORIGINS=https://seu-painel.example.com`
+- `NEXT_PUBLIC_API_URL=/api/v1` no build do frontend quando o proxy expuser a API no mesmo domínio
 
 ## Onde editar os prompts
 
@@ -112,7 +117,7 @@ Tudo que depende de prompt ou diretriz editorial fica em [references](D:/ChatGPT
 - [prompt_generate_pautas.md](D:/ChatGPT/post-generator/references/prompt_generate_pautas.md)
 - [prompt_generate_article.md](D:/ChatGPT/post-generator/references/prompt_generate_article.md)
 
-Os placeholders desses prompts precisam continuar existindo quando voce editar o texto.
+Os placeholders desses prompts precisam continuar existindo quando você editar o texto.
 
 ## Como rodar
 
@@ -142,8 +147,39 @@ npm run dev
 
 ## Backups
 
-Os backups automaticos ficam em [backend/data/backups](D:/ChatGPT/post-generator/backend/data/backups).
+Os backups automáticos ficam em [backend/data/backups](D:/ChatGPT/post-generator/backend/data/backups).
+
+## Testes antes de publicar
+
+Os testes abaixo não geram pauta, não consomem créditos do GPT e não publicam artigo:
+
+```powershell
+cd D:\ChatGPT\post-generator\backend
+.\venv\Scripts\python.exe -m unittest discover -s tests -v
+.\venv\Scripts\python.exe scripts\smoke_test.py --include-wordpress
+
+cd D:\ChatGPT\post-generator\frontend
+npm run lint
+npm run build
+npm audit --audit-level=moderate
+```
+
+O `smoke_test.py --include-wordpress` apenas testa leitura da conexão autenticada do WordPress.
+
+## Preparação para VPS
+
+Este projeto ainda não deve ser colocado publicamente na internet sem uma camada de autenticação. O painel aciona geração paga com GPT e publicação no WordPress.
+
+Requisitos para o deploy:
+
+- Servir o painel e `/api/` atrás de autenticação no proxy reverso, como Nginx com Basic Auth ou Cloudflare Access.
+- Manter o FastAPI vinculado a `127.0.0.1`, nunca diretamente exposto na porta `8000`.
+- Executar apenas um worker do backend enquanto a persistência for Excel local.
+- Persistir e fazer backup externo de `backend/data`.
+- Configurar `CORS_ORIGINS` apenas com o domínio real do painel.
+
+O cron job automático ainda é o próximo módulo: hoje o painel permite executar as etapas manualmente, mas não existe um comando agendável que selecione pautas e publique sem revisão.
 
 ## Estado atual
 
-O fluxo oficial do projeto e o namespace `editorial`.
+O fluxo oficial do projeto é o namespace `editorial`.
