@@ -13,13 +13,16 @@ from app.core.config import settings
 
 class WordPressClient:
     def __init__(self) -> None:
+        self.reload_configuration()
+        self.request_timeout = 15
+        self.request_retries = 3
+        self.retry_delay = 5
+
+    def reload_configuration(self) -> None:
         self.base_url = settings.WORDPRESS_URL.rstrip("/")
         self.api_url = f"{self.base_url}/wp-json/wp/v2"
         self.username = settings.WORDPRESS_USERNAME
         self.password = settings.WORDPRESS_APPLICATION_PASSWORD
-        self.request_timeout = 15
-        self.request_retries = 3
-        self.retry_delay = 5
 
     def _auth_token(self) -> str:
         auth_string = f"{self.username}:{self.password}"
@@ -31,7 +34,7 @@ class WordPressClient:
         return {
             "Authorization": f"Basic {self._auth_token()}",
             "Content-Type": content_type,
-            "User-Agent": "EasyMedicinaLocalAutomation/1.0",
+            "User-Agent": "EditorialAutomation/1.0",
             "Accept": "application/json",
         }
 

@@ -32,7 +32,7 @@ async def startup_event():
 
 @app.get("/health", tags=["Health"])
 def health_check():
-    return {"status": "ok", "message": "Gerador de Artigos AI esta rodando!"}
+    return {"status": "ok", "message": "Motor Editorial AI esta rodando!"}
 
 
 logger.info("Carregando rotas da API em %s", settings.API_V1_STR)

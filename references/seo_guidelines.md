@@ -1,4 +1,4 @@
-# Princípios de SEO — Blog Easy Medicina
+# Diretrizes de SEO do Cliente — Blog Easy Medicina
 
 > Baseado nos guias oficiais do Yoast SEO (lidos diretamente das fontes):
 > [Quality Content](https://yoast.com/quality-content/) · [SEO-Friendly Blog Post](https://yoast.com/seo-friendly-blog-post/) · [Image SEO](https://yoast.com/image-seo/) · [SEO Copywriting](https://yoast.com/complete-guide-seo-copywriting/) · [Keyword Research](https://yoast.com/keyword-research-ultimate-guide/) · [Site Structure](https://yoast.com/site-structure-the-ultimate-guide/)

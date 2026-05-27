@@ -38,6 +38,8 @@ backend/data/backups/excel/*
 !backend/data/backups/images/.gitkeep
 backend/data/backups/images/*
 !backend/data/backups/images/.gitkeep
+!backend/data/backups/configuration/
+backend/data/backups/configuration/*
 !backend/data/generated_articles/
 !backend/data/generated_articles/.gitkeep
 backend/data/generated_articles/*

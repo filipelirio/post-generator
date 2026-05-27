@@ -1,105 +1,44 @@
-# Easy Artigos - Easy Medicina
+# Motor Editorial AI
 
-Aplicação para operar o fluxo editorial do blog Easy Medicina localmente e, futuramente, em uma VPS privada.
+Aplicação local para operar um fluxo editorial com planilha Excel, GPT com web search, geração de imagem, revisão e publicação no WordPress com metadados de SEO.
+
+O projeto foi desenhado para ser reaproveitado em diferentes blogs/clientes. A lógica fica no código; a identidade editorial, estratégia de SEO, prompts e credenciais ficam isolados em arquivos de referência e na página **Configurações**.
 
 ## O que o app faz
 
-- mantém a fila de pautas em uma planilha Excel local
-- gera novas pautas com GPT + web search
-- gera artigo em HTML para WordPress
-- gera capa automaticamente
-- mostra preview no dashboard responsivo
-- publica no WordPress com Yoast e imagem destacada
-- sincroniza status do WordPress de volta para a planilha
-- cria backups da planilha, dos artigos e das imagens
-- executa ciclos agendados na VPS com token e modo seguro
+- Mantém a fila de pautas em uma planilha Excel local.
+- Gera novas pautas com GPT e web search.
+- Gera artigos em HTML semântico para WordPress.
+- Gera briefing e capa automaticamente.
+- Mostra preview do artigo e da imagem.
+- Publica como rascunho ou direto no WordPress.
+- Prepara campos de SEO compatíveis com Yoast.
+- Sincroniza status, URL e data de publicação do WordPress.
+- Cria backups da planilha, artigos, imagens e documentos de configuração.
+- Executa ciclos agendados via cron na VPS.
 
-## Estrutura principal
+## Arquivos por cliente
 
-```text
-backend/
-  app/
-    api/v1/
-      editorial.py
-    core/
-      config.py
-    integrations/
-      wordpress.py
-    schemas/
-      editorial.py
-    services/
-      article_package_service.py
-      editorial_file_service.py
-      editorial_publish_service.py
-      editorial_article_service.py
-      editorial_cron_service.py
-      excel_editorial_service.py
-      openai_editorial_service.py
-      openai_image_service.py
-    main.py
-  data/
-    editorial_pautas.xlsx
-    generated_articles/
-    generated_images/
-    backups/
-  requirements.txt
-  venv/
+Para adaptar o motor a outro blog, edite estes arquivos ou use a tela **Configurações**:
 
-frontend/
-  src/
-    app/
-      page.tsx
-      pautas/
-      settings/
-    components/
-      Sidebar.tsx
-    lib/
-      api.ts
-    styles/
-      globals.css
+- [client_instructions.md](D:/ChatGPT/post-generator/references/client_instructions.md): marca, público, tom de voz, produtos, URLs oficiais, temas permitidos/proibidos e regras editoriais.
+- [seo_guidelines.md](D:/ChatGPT/post-generator/references/seo_guidelines.md): estratégia de SEO do cliente, critérios de qualidade, links internos, cornerstones e padrões de otimização.
+- [prompt_generate_pautas.md](D:/ChatGPT/post-generator/references/prompt_generate_pautas.md): template avançado para geração de pautas.
+- [prompt_generate_article.md](D:/ChatGPT/post-generator/references/prompt_generate_article.md): template avançado para geração de artigos.
 
-references/
-  manual_editorial_easy_medicina.md
-  principles-seo.md
-  prompt_generate_article.md
-  prompt_generate_pautas.md
-```
+Ao copiar o projeto para outro cliente, normalmente você só precisa trocar esses documentos, limpar ou substituir a planilha em `backend/data`, e configurar as credenciais no `.env` ou pela página **Configurações**.
 
-## Fluxo oficial
+## Configurações sensíveis
 
-1. A fila editorial fica em [editorial_pautas.xlsx](D:/ChatGPT/post-generator/backend/data/editorial_pautas.xlsx).
-2. O backend gera pautas e artigos usando OpenAI com apoio de web search.
-3. O pacote gerado salva:
-   - `artigo_[slug].txt`
-   - `artigo_[slug]_seo.txt`
-   - `artigo_[slug]_imagem.txt`
-4. A review mostra preview do HTML e da capa.
-5. O WordPress recebe conteudo, slug, excerpt, Yoast e featured image.
-6. O app pode sincronizar o status publicado de volta para a planilha.
-
-## Endpoints principais
-
-- `GET /api/v1/editorial/system/status`
-- `GET /api/v1/editorial/pautas`
-- `GET /api/v1/editorial/pautas/{pauta_id}`
-- `POST /api/v1/editorial/pautas/generate`
-- `POST /api/v1/editorial/pautas/sync-wordpress`
-- `POST /api/v1/editorial/articles/{pauta_id}/generate`
-- `GET /api/v1/editorial/articles/{pauta_id}`
-- `GET /api/v1/editorial/articles/{pauta_id}/image`
-- `POST /api/v1/editorial/articles/publish`
-- `POST /api/v1/editorial/automation/run` (uso interno, exige `X-Cron-Token`)
-
-## Variáveis de ambiente
-
-O backend le:
-- [`.env`](D:/ChatGPT/post-generator/.env)
-- [`.env.example`](D:/ChatGPT/post-generator/backend/.env.example)
+As credenciais são gravadas no arquivo [`.env`](D:/ChatGPT/post-generator/.env), que não deve ser versionado.
 
 Campos principais:
+
 - `OPENAI_API_KEY`
 - `OPENAI_MODEL`
 - `OPENAI_IMAGE_MODEL`
+- `OPENAI_IMAGE_SIZE`
+- `OPENAI_IMAGE_QUALITY`
 - `OPENAI_WEBSEARCH_ENABLED`
 - `WORDPRESS_URL`
 - `WORDPRESS_USERNAME`
@@ -108,60 +47,99 @@ Campos principais:
 - `CRON_TOKEN`
 - `CRON_MODE`
 - `CRON_MAX_ITEMS`
+- `CRON_SCHEDULE`
 - `CRON_DRY_RUN`
 - `CRON_ALLOW_UNREVIEWED_PUBLISH`
 
-Os caminhos de planilha e pastas de output já apontam para `backend/data` por padrão.
+A API de configuração nunca devolve a chave da OpenAI, a senha de aplicação do WordPress ou o token do cron. Ela mostra apenas se esses valores já estão configurados.
 
-Para uma VPS, defina também:
-
-- `CORS_ORIGINS=https://seu-painel.example.com`
-- `NEXT_PUBLIC_API_URL=/api/v1` no build do frontend quando o proxy expuser a API no mesmo domínio
-
-## Onde editar os prompts
-
-Tudo que depende de prompt ou diretriz editorial fica em [references](D:/ChatGPT/post-generator/references):
-
-- [manual_editorial_easy_medicina.md](D:/ChatGPT/post-generator/references/manual_editorial_easy_medicina.md)
-- [principles-seo.md](D:/ChatGPT/post-generator/references/principles-seo.md)
-- [prompt_generate_pautas.md](D:/ChatGPT/post-generator/references/prompt_generate_pautas.md)
-- [prompt_generate_article.md](D:/ChatGPT/post-generator/references/prompt_generate_article.md)
-
-Os placeholders desses prompts precisam continuar existindo quando você editar o texto.
-
-## Como rodar
-
-### Jeito mais simples
+## Como rodar localmente
 
 Use [Iniciar_Local.bat](D:/ChatGPT/post-generator/Iniciar_Local.bat).
 
-Ele:
-- sobe o backend com o `venv`
-- sobe o frontend
-- detecta a porta livre do Next.js
-- abre o navegador automaticamente
+Ele sobe:
 
-### Backend manual
+- Backend FastAPI em `http://localhost:8000`
+- Frontend Next.js na primeira porta livre entre `3000` e `3005`
+- Navegador automaticamente na URL do painel
+
+Backend manual:
 
 ```powershell
 cd D:\ChatGPT\post-generator\backend
 .\venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-### Frontend manual
+Frontend manual:
 
 ```powershell
 cd D:\ChatGPT\post-generator\frontend
 npm run dev
 ```
 
-## Backups
+## Fluxo editorial
 
-Os backups automáticos ficam em [backend/data/backups](D:/ChatGPT/post-generator/backend/data/backups).
+1. A fila editorial fica em [editorial_pautas.xlsx](D:/ChatGPT/post-generator/backend/data/editorial_pautas.xlsx).
+2. O botão **Gerar 10 Novas Pautas** cria novas pautas usando o GPT e web search.
+3. Cada pauta pode gerar um pacote com:
+   - `artigo_[slug].txt`
+   - `artigo_[slug]_seo.txt`
+   - `artigo_[slug]_imagem.txt`
+4. A tela de review mostra artigo, SEO e imagem.
+5. O WordPress recebe conteúdo HTML, categoria, tags, Yoast e imagem destacada.
+6. A fila registra status, URL, post ID e data/hora de publicação.
 
-## Testes antes de publicar
+## Páginas do painel
 
-Os testes abaixo não geram pauta, não consomem créditos do GPT e não publicam artigo:
+- **Dashboard:** visão geral da operação.
+- **Pautas:** fila editorial, geração de pautas/artigos, publicação e sincronização WordPress.
+- **Saúde:** diagnóstico de GPT, web search, WordPress, cron, arquivos e backups.
+- **Configurações:** editor de instruções do cliente, SEO, prompts, APIs e automação.
+
+## Cron job na VPS
+
+O app armazena a política do cron em `CRON_SCHEDULE`, mas quem agenda de verdade é o sistema operacional da VPS.
+
+Exemplo de `.env` para publicação direta em dias úteis às 07:00:
+
+```dotenv
+CRON_ENABLED="true"
+CRON_TOKEN="um-token-longo-aleatorio-e-privado"
+CRON_MODE="publish"
+CRON_MAX_ITEMS="1"
+CRON_SCHEDULE="0 7 * * 1-5"
+CRON_DRY_RUN="false"
+CRON_ALLOW_UNREVIEWED_PUBLISH="true"
+```
+
+Exemplo de crontab usando a mesma frequência:
+
+```cron
+0 7 * * 1-5 cd /opt/motor-editorial/backend && ./venv/bin/python scripts/run_cron.py --execute >> /var/log/motor-editorial-cron.log 2>&1
+```
+
+Antes de ativar a execução real, rode sem `--execute` para simular:
+
+```bash
+cd /opt/motor-editorial/backend
+./venv/bin/python scripts/run_cron.py --mode publish
+```
+
+## Segurança para VPS
+
+Não exponha este painel publicamente sem autenticação. Ele consegue gastar créditos de IA, alterar credenciais locais e publicar no WordPress.
+
+Recomendações:
+
+- Servir painel e `/api/` atrás de autenticação, como Nginx Basic Auth ou Cloudflare Access.
+- Manter o FastAPI ouvindo apenas em `127.0.0.1`.
+- Usar apenas um worker enquanto a persistência for Excel local.
+- Fazer backup externo de `backend/data`.
+- Definir `CORS_ORIGINS` somente com o domínio real do painel.
+
+## Testes
+
+Os testes abaixo não geram pautas, não consomem créditos do GPT e não publicam conteúdo:
 
 ```powershell
 cd D:\ChatGPT\post-generator\backend
@@ -174,83 +152,4 @@ npm run build
 npm audit --audit-level=moderate
 ```
 
-O `smoke_test.py --include-wordpress` apenas testa leitura da conexão autenticada do WordPress.
-
-## Cron job na VPS
-
-O cron chama o backend local já em execução; ele não escreve diretamente na planilha. Isso mantém a mesma trava de escrita usada pelo dashboard e pressupõe um único worker FastAPI.
-
-Modos disponíveis:
-
-- `generate_only`: gera pacote e capa para a próxima pauta `Pendente`, sem acessar publicação do WordPress.
-- `draft`: transforma uma pauta `Em producao` ou `Pendente` em rascunho no WordPress; ao receber uma pauta pendente, gera o pacote antes.
-- `publish`: publica uma pauta em `Rascunho`; com publicação direta habilitada, também gera e publica a próxima pauta `Pendente` na mesma rodada.
-
-Configure no `.env` da VPS:
-
-```dotenv
-CRON_ENABLED="true"
-CRON_TOKEN="um-token-longo-aleatorio-e-privado"
-CRON_MODE="draft"
-CRON_MAX_ITEMS="1"
-CRON_DRY_RUN="true"
-CRON_ALLOW_UNREVIEWED_PUBLISH="false"
-```
-
-O comando sempre simula enquanto não receber `--execute`. Além disso, o backend bloqueia a execução enquanto `CRON_DRY_RUN="true"`. Depois de validar a simulação, altere essa variável para `false` antes de programar o cron:
-
-```bash
-cd /opt/easy-artigos/backend
-./venv/bin/python scripts/run_cron.py --mode draft
-# Depois de definir CRON_DRY_RUN="false":
-./venv/bin/python scripts/run_cron.py --mode draft --max-items 1 --execute
-```
-
-Exemplo de agendamento que cria no máximo um rascunho por dia útil, às 07:00:
-
-```cron
-0 7 * * 1-5 cd /opt/easy-artigos/backend && ./venv/bin/python scripts/run_cron.py --mode draft --max-items 1 --execute >> /var/log/easy-artigos-cron.log 2>&1
-```
-
-Para publicar automaticamente um rascunho já revisado:
-
-```cron
-0 8 * * 1-5 cd /opt/easy-artigos/backend && ./venv/bin/python scripts/run_cron.py --mode publish --max-items 1 --execute >> /var/log/easy-artigos-publish.log 2>&1
-```
-
-Para o fluxo automático direto solicitado, sem etapa de rascunho, configure:
-
-```dotenv
-CRON_ENABLED="true"
-CRON_TOKEN="um-token-longo-aleatorio-e-privado"
-CRON_MODE="publish"
-CRON_MAX_ITEMS="1"
-CRON_DRY_RUN="false"
-CRON_ALLOW_UNREVIEWED_PUBLISH="true"
-```
-
-Nesse modo, o comando abaixo seleciona uma pauta pendente, gera artigo e capa e publica diretamente no WordPress:
-
-```cron
-0 7 * * 1-5 cd /opt/easy-artigos/backend && ./venv/bin/python scripts/run_cron.py --execute >> /var/log/easy-artigos-direto.log 2>&1
-```
-
-Se quiser pausar a publicação direta sem alterar o `.env`, rode manualmente com `--reviewed-only`. Antes de ligar o cron direto na VPS, valide uma execução sem `--execute`, que apenas informa qual pauta seria publicada.
-
-## Preparação para VPS
-
-Este projeto ainda não deve ser colocado publicamente na internet sem uma camada de autenticação. O painel aciona geração paga com GPT e publicação no WordPress.
-
-Requisitos para o deploy:
-
-- Servir o painel e `/api/` atrás de autenticação no proxy reverso, como Nginx com Basic Auth ou Cloudflare Access.
-- Manter o FastAPI vinculado a `127.0.0.1`, nunca diretamente exposto na porta `8000`.
-- Executar apenas um worker do backend enquanto a persistência for Excel local.
-- Persistir e fazer backup externo de `backend/data`.
-- Configurar `CORS_ORIGINS` apenas com o domínio real do painel.
-
-O cron job deve chamar somente `http://127.0.0.1:8000` e utilizar `CRON_TOKEN`. A configuração permite publicação direta, mas o primeiro disparo na VPS deve ser feito sem `--execute` para confirmar qual pauta será escolhida.
-
-## Estado atual
-
-O fluxo oficial do projeto é o namespace `editorial`.
+O `smoke_test.py --include-wordpress` faz apenas leitura autenticada para validar a conexão com o WordPress.

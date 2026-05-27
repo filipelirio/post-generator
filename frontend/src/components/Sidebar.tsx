@@ -2,12 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart2, List, Settings, Sparkles } from "lucide-react";
+import { BarChart2, HeartPulse, List, Settings, Sparkles } from "lucide-react";
 import clsx from "clsx";
 
 const menuItems = [
   { name: "Dashboard", href: "/", icon: BarChart2 },
   { name: "Pautas", href: "/pautas", icon: List },
+  { name: "Saúde", href: "/health", icon: HeartPulse },
   { name: "Configurações", href: "/settings", icon: Settings },
 ];
 
@@ -19,7 +20,7 @@ export default function Sidebar() {
       <div className="hidden h-16 items-center border-b border-slate-200 px-6 md:flex">
         <Link href="/" className="flex items-center gap-2 font-bold text-slate-800">
           <Sparkles className="h-6 w-6 text-green-600" />
-          <span>Easy Artigos</span>
+          <span>Motor Editorial</span>
         </Link>
       </div>
 

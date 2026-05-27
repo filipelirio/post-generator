@@ -1,4 +1,4 @@
-# Manual Editorial — Easy Medicina
+# Instruções do Cliente — Easy Medicina
 
 ## 1. Objetivo do Blog
 

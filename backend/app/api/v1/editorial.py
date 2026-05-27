@@ -10,6 +10,9 @@ from app.schemas.editorial import (
     ArticlePackageResponse,
     AutomationRunRequest,
     AutomationRunResponse,
+    EditorialConfigurationResponse,
+    EditorialConfigurationSaveResponse,
+    EditorialConfigurationUpdateRequest,
     EditorialSystemStatusResponse,
     GeneratePautasRequest,
     GeneratePautasResponse,
@@ -20,6 +23,7 @@ from app.schemas.editorial import (
 from app.services.excel_editorial_service import excel_editorial_service
 from app.services.editorial_file_service import editorial_file_service
 from app.services.editorial_article_service import PautaNotFoundError, editorial_article_service
+from app.services.editorial_configuration_service import editorial_configuration_service
 from app.services.editorial_cron_service import editorial_cron_service
 from app.services.editorial_publish_service import editorial_publish_service
 from app.services.openai_editorial_service import openai_editorial_service
@@ -47,17 +51,34 @@ def get_editorial_system_status():
         cron_mode=settings.CRON_MODE,
         cron_dry_run=settings.CRON_DRY_RUN,
         cron_max_items=settings.CRON_MAX_ITEMS,
+        cron_schedule=settings.CRON_SCHEDULE,
         cron_allow_unreviewed_publish=settings.CRON_ALLOW_UNREVIEWED_PUBLISH,
     )
+
+
+@router.get("/configuration", response_model=EditorialConfigurationResponse)
+def get_editorial_configuration():
+    return editorial_configuration_service.get_configuration()
+
+
+@router.put("/configuration", response_model=EditorialConfigurationSaveResponse)
+def update_editorial_configuration(payload: EditorialConfigurationUpdateRequest):
+    try:
+        configuration = editorial_configuration_service.save_configuration(payload)
+        return EditorialConfigurationSaveResponse(
+            message="Configuracoes salvas. As integracoes ja usam os novos valores.",
+            configuration=configuration,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Erro ao salvar configuracoes: {exc}")
 
 
 @router.get("/pautas")
 def list_excel_pautas():
     try:
-        pautas = excel_editorial_service.list_pautas()
-        if not pautas:
-            pautas = excel_editorial_service.seed_initial_pautas()
-        return [pauta.model_dump(by_alias=True) for pauta in pautas]
+        return [pauta.model_dump(by_alias=True) for pauta in excel_editorial_service.list_pautas()]
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Erro ao ler planilha Excel: {exc}")
 

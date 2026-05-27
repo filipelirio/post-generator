@@ -14,11 +14,10 @@ from app.services.html_sanitizer_service import sanitize_html
 class OpenAIEditorialService:
     def __init__(self) -> None:
         self._client = None
-        self.references_dir = Path(settings.BASE_DIR).parent / "references"
-        self.editorial_manual_path = self.references_dir / "manual_editorial_easy_medicina.md"
-        self.seo_principles_path = self.references_dir / "principles-seo.md"
-        self.generate_pautas_prompt_path = self.references_dir / "prompt_generate_pautas.md"
-        self.generate_article_prompt_path = self.references_dir / "prompt_generate_article.md"
+        self.client_instructions_path = Path(settings.CLIENT_INSTRUCTIONS_PATH)
+        self.seo_principles_path = Path(settings.SEO_GUIDELINES_PATH)
+        self.generate_pautas_prompt_path = Path(settings.GENERATE_PAUTAS_PROMPT_PATH)
+        self.generate_article_prompt_path = Path(settings.GENERATE_ARTICLE_PROMPT_PATH)
 
     def _get_client(self) -> OpenAI:
         if not settings.OPENAI_API_KEY:
@@ -91,30 +90,30 @@ class OpenAIEditorialService:
             rendered = rendered.replace(f"[[{key}]]", value)
         return rendered
 
-    def _editorial_manual(self) -> str:
+    def _client_instructions(self) -> str:
         return self._load_reference(
-            self.editorial_manual_path,
-            "Manual editorial indisponivel. Mantenha tom direto, pratico, didatico e orientado a conversao para estudantes de medicina.",
+            self.client_instructions_path,
+            "Instrucoes do cliente indisponiveis. Nao produza conteudo ate que marca, publico, oferta e tom editorial sejam definidos.",
         )
 
     def _seo_principles(self) -> str:
         return self._load_reference(
             self.seo_principles_path,
-            "Principios de SEO indisponiveis. Priorize keyword principal no titulo, introducao, H2, meta description, slug, links internos e links externos confiaveis.",
+            "Diretrizes de SEO indisponiveis. Priorize keyword principal no titulo, introducao, H2, meta description, slug, links internos e links externos confiaveis.",
         )
 
     def generate_pautas(self, request: GeneratePautasRequest, existing_pautas: List[SheetPauta], next_id: int) -> List[SheetPauta]:
         client = self._get_client()
         existing_keywords = [p.palavra_chave_principal for p in existing_pautas if p.palavra_chave_principal][:200]
         existing_topics = [p.tema for p in existing_pautas if p.tema][:200]
-        editorial_manual = self._editorial_manual()
+        client_instructions = self._client_instructions()
         seo_principles = self._seo_principles()
         prompt = self._render_prompt_template(
             self.generate_pautas_prompt_path,
             fallback=(
-                "Voce e o editor-chefe SEO do blog Easy Medicina.\n"
-                "Use o manual editorial e os principios de SEO abaixo como base obrigatoria.\n\n"
-                "[[EDITORIAL_MANUAL]]\n\n[[SEO_PRINCIPLES]]\n\n"
+                "Voce e o editor-chefe SEO do blog descrito nas instrucoes do cliente.\n"
+                "Use as instrucoes do cliente e as diretrizes de SEO abaixo como base obrigatoria.\n\n"
+                "[[CLIENT_INSTRUCTIONS]]\n\n[[SEO_PRINCIPLES]]\n\n"
                 "Crie [[COUNT]] pautas novas sem duplicar [[EXISTING_KEYWORDS]] ou [[EXISTING_TOPICS]].\n"
                 "Categoria forcada: [[FORCE_CATEGORY]]\n"
                 "Observacoes extras: [[NOTES]]\n"
@@ -122,7 +121,7 @@ class OpenAIEditorialService:
             ),
             variables={
                 "COUNT": str(request.count),
-                "EDITORIAL_MANUAL": editorial_manual,
+                "CLIENT_INSTRUCTIONS": client_instructions,
                 "SEO_PRINCIPLES": seo_principles,
                 "EXISTING_KEYWORDS": json.dumps(existing_keywords, ensure_ascii=False),
                 "EXISTING_TOPICS": json.dumps(existing_topics, ensure_ascii=False),
@@ -169,20 +168,20 @@ class OpenAIEditorialService:
 
     def generate_article_package(self, pauta: SheetPauta) -> dict:
         client = self._get_client()
-        editorial_manual = self._editorial_manual()
+        client_instructions = self._client_instructions()
         seo_principles = self._seo_principles()
         prompt = self._render_prompt_template(
             self.generate_article_prompt_path,
             fallback=(
-                "Voce e o editor do blog Easy Medicina.\n"
-                "Use o manual editorial e os principios de SEO abaixo como base obrigatoria.\n\n"
-                "[[EDITORIAL_MANUAL]]\n\n[[SEO_PRINCIPLES]]\n\n"
+                "Voce e o editor do blog descrito nas instrucoes do cliente.\n"
+                "Use as instrucoes do cliente e as diretrizes de SEO abaixo como base obrigatoria.\n\n"
+                "[[CLIENT_INSTRUCTIONS]]\n\n[[SEO_PRINCIPLES]]\n\n"
                 "Pauta:\n[[PAUTA_CONTEXT]]\n\n"
                 "Responda apenas em JSON com slug, titulo, conteudo_html, seo_title, meta_desc, focus_kw, tags, "
                 "internal_links, external_links, product_mentions, imagem_prompt, imagem_tema_curto, imagem_alt e preview_html."
             ),
             variables={
-                "EDITORIAL_MANUAL": editorial_manual,
+                "CLIENT_INSTRUCTIONS": client_instructions,
                 "SEO_PRINCIPLES": seo_principles,
                 "PAUTA_CONTEXT": "\n".join(
                     [

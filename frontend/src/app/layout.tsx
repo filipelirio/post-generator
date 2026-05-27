@@ -7,8 +7,8 @@ import "@/styles/globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Gerador de Artigos AI | Easy Medicina",
-  description: "Fluxo editorial da Easy Medicina com GPT, web search, capa automática e publicação no WordPress.",
+  title: "Motor Editorial AI",
+  description: "Fluxo editorial com GPT, web search, capa automática e publicação no WordPress.",
 };
 
 export default function RootLayout({

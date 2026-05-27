@@ -1,9 +1,9 @@
 @echo off
 setlocal EnableDelayedExpansion
-title Easy Artigos - Inicializacao Local
+title Motor Editorial - Inicializacao Local
 
 echo ==========================================
-echo   Iniciando Easy Artigos (LOCAL)
+echo   Iniciando Motor Editorial (LOCAL)
 echo ==========================================
 echo.
 

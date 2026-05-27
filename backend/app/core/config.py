@@ -14,7 +14,7 @@ BACKEND_ENV_FILE = BACKEND_DIR / ".env"
 
 
 class Settings(BaseSettings):
-    PROJECT_NAME: str = "Gerador de Artigos AI"
+    PROJECT_NAME: str = "Motor Editorial AI"
     API_V1_STR: str = "/api/v1"
 
     BASE_DIR: str = str(BACKEND_DIR)
@@ -36,7 +36,12 @@ class Settings(BaseSettings):
     ARTICLE_BACKUPS_DIR: str = str(BACKEND_DIR / "data" / "backups" / "articles")
     IMAGE_BACKUPS_DIR: str = str(BACKEND_DIR / "data" / "backups" / "images")
 
-    WORDPRESS_URL: str = "https://easymedicina.com"
+    CLIENT_INSTRUCTIONS_PATH: str = str(PROJECT_ROOT / "references" / "client_instructions.md")
+    SEO_GUIDELINES_PATH: str = str(PROJECT_ROOT / "references" / "seo_guidelines.md")
+    GENERATE_PAUTAS_PROMPT_PATH: str = str(PROJECT_ROOT / "references" / "prompt_generate_pautas.md")
+    GENERATE_ARTICLE_PROMPT_PATH: str = str(PROJECT_ROOT / "references" / "prompt_generate_article.md")
+
+    WORDPRESS_URL: str = ""
     WORDPRESS_USERNAME: str = "seu_usuario"
     WORDPRESS_APPLICATION_PASSWORD: str = ""
     DEFAULT_POST_STATUS: str = "draft"
@@ -49,6 +54,7 @@ class Settings(BaseSettings):
     CRON_TOKEN: str = ""
     CRON_MODE: Literal["generate_only", "draft", "publish"] = "generate_only"
     CRON_MAX_ITEMS: int = 1
+    CRON_SCHEDULE: str = "0 7 * * 1-5"
     CRON_DRY_RUN: bool = True
     CRON_ALLOW_UNREVIEWED_PUBLISH: bool = False
 

@@ -157,4 +157,56 @@ class EditorialSystemStatusResponse(BaseModel):
     cron_mode: Literal["generate_only", "draft", "publish"]
     cron_dry_run: bool
     cron_max_items: int
+    cron_schedule: str
     cron_allow_unreviewed_publish: bool
+
+
+class EditorialConfigurationResponse(BaseModel):
+    client_instructions: str
+    seo_guidelines: str
+    prompt_generate_pautas: str
+    prompt_generate_article: str
+    openai_api_key_configured: bool
+    openai_model: str
+    openai_image_model: str
+    openai_image_size: str
+    openai_image_quality: str
+    openai_websearch_enabled: bool
+    wordpress_url: str
+    wordpress_username: str
+    wordpress_application_password_configured: bool
+    cron_enabled: bool
+    cron_token_configured: bool
+    cron_mode: Literal["generate_only", "draft", "publish"]
+    cron_max_items: int
+    cron_schedule: str
+    cron_dry_run: bool
+    cron_allow_unreviewed_publish: bool
+
+
+class EditorialConfigurationUpdateRequest(BaseModel):
+    client_instructions: str = Field(min_length=1)
+    seo_guidelines: str = Field(min_length=1)
+    prompt_generate_pautas: str = Field(min_length=1)
+    prompt_generate_article: str = Field(min_length=1)
+    openai_api_key: Optional[str] = None
+    openai_model: str = Field(min_length=1)
+    openai_image_model: str = Field(min_length=1)
+    openai_image_size: str = Field(min_length=1)
+    openai_image_quality: str = Field(min_length=1)
+    openai_websearch_enabled: bool
+    wordpress_url: str = ""
+    wordpress_username: str = ""
+    wordpress_application_password: Optional[str] = None
+    cron_enabled: bool
+    cron_token: Optional[str] = None
+    cron_mode: Literal["generate_only", "draft", "publish"]
+    cron_max_items: int = Field(default=1, ge=1, le=5)
+    cron_schedule: str = Field(min_length=1)
+    cron_dry_run: bool
+    cron_allow_unreviewed_publish: bool
+
+
+class EditorialConfigurationSaveResponse(BaseModel):
+    message: str
+    configuration: EditorialConfigurationResponse

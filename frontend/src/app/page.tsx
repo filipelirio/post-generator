@@ -66,7 +66,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Operação Editorial Easy Medicina</h2>
+          <h2 className="text-2xl font-bold text-slate-900">Operação Editorial</h2>
           <p className="text-sm text-slate-500">Pautas em Excel local, geração com GPT + web search, capa automática e publicação no WordPress.</p>
         </div>
         <button
@@ -118,7 +118,7 @@ export default function DashboardPage() {
 
         <div className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-lg font-semibold text-slate-900 mb-2">Geração Automatizada</h3>
-          <p className="text-sm text-slate-600 mb-4">O GPT usa web search para pauta, links internos, links externos, CTA e propaganda dos produtos da Easy Medicina.</p>
+          <p className="text-sm text-slate-600 mb-4">O GPT usa web search para pautas, links, CTA e oferta definida nas instruções do cliente.</p>
           <button
             onClick={handleGeneratePautas}
             disabled={generating}

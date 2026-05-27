@@ -11,6 +11,8 @@ from app.core.config import settings
 from app.integrations.wordpress import WordPressClient
 from app.main import app
 from app.schemas.editorial import AutomationRunRequest, AutomationRunResponse, PublishArticleRequest, SheetPauta
+from app.schemas.editorial import EditorialConfigurationUpdateRequest
+from app.services.editorial_configuration_service import EditorialConfigurationService
 from app.services.editorial_cron_service import EditorialCronService
 from app.services.editorial_publish_service import EditorialPublishService
 from app.services.excel_editorial_service import ExcelEditorialService
@@ -74,6 +76,100 @@ class ExcelServiceTests(unittest.TestCase):
                 self.assertEqual(first[0].id, "1")
                 self.assertEqual(second[0].id, "2")
                 self.assertEqual(len(list((root / "backups").glob("*.xlsx"))), 2)
+
+
+class EditorialConfigurationServiceTests(unittest.TestCase):
+    def test_configuration_response_masks_secrets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            root = Path(temporary_dir)
+            client_file = root / "client.md"
+            seo_file = root / "seo.md"
+            pautas_prompt = root / "pautas.md"
+            article_prompt = root / "article.md"
+            for path, content in [
+                (client_file, "Cliente"),
+                (seo_file, "SEO"),
+                (pautas_prompt, "[[CLIENT_INSTRUCTIONS]] [[SEO_PRINCIPLES]] [[COUNT]]"),
+                (article_prompt, "[[CLIENT_INSTRUCTIONS]] [[SEO_PRINCIPLES]] [[PAUTA_CONTEXT]]"),
+            ]:
+                path.write_text(content, encoding="utf-8")
+
+            with (
+                patch.object(settings, "CLIENT_INSTRUCTIONS_PATH", str(client_file)),
+                patch.object(settings, "SEO_GUIDELINES_PATH", str(seo_file)),
+                patch.object(settings, "GENERATE_PAUTAS_PROMPT_PATH", str(pautas_prompt)),
+                patch.object(settings, "GENERATE_ARTICLE_PROMPT_PATH", str(article_prompt)),
+                patch.object(settings, "OPENAI_API_KEY", "sk-secret"),
+                patch.object(settings, "WORDPRESS_APPLICATION_PASSWORD", "wp-secret"),
+                patch.object(settings, "CRON_TOKEN", "cron-secret"),
+            ):
+                response = EditorialConfigurationService(env_path=root / ".env").get_configuration().model_dump()
+
+            serialized = str(response)
+            self.assertTrue(response["openai_api_key_configured"])
+            self.assertTrue(response["wordpress_application_password_configured"])
+            self.assertTrue(response["cron_token_configured"])
+            self.assertNotIn("sk-secret", serialized)
+            self.assertNotIn("wp-secret", serialized)
+            self.assertNotIn("cron-secret", serialized)
+
+    def test_save_configuration_writes_documents_env_and_keeps_blank_secrets(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_dir:
+            root = Path(temporary_dir)
+            env_path = root / ".env"
+            env_path.write_text(
+                'OPENAI_API_KEY="old-openai"\nWORDPRESS_APPLICATION_PASSWORD="old-wp"\nCRON_TOKEN="old-cron"\n',
+                encoding="utf-8",
+            )
+            client_file = root / "client.md"
+            seo_file = root / "seo.md"
+            pautas_prompt = root / "pautas.md"
+            article_prompt = root / "article.md"
+            for path in [client_file, seo_file, pautas_prompt, article_prompt]:
+                path.write_text("old", encoding="utf-8")
+
+            payload = EditorialConfigurationUpdateRequest(
+                client_instructions="Novo cliente",
+                seo_guidelines="Novo SEO",
+                prompt_generate_pautas="[[CLIENT_INSTRUCTIONS]] [[SEO_PRINCIPLES]] [[COUNT]]",
+                prompt_generate_article="[[CLIENT_INSTRUCTIONS]] [[SEO_PRINCIPLES]] [[PAUTA_CONTEXT]]",
+                openai_api_key="",
+                openai_model="gpt-5",
+                openai_image_model="gpt-image-1",
+                openai_image_size="1536x1024",
+                openai_image_quality="medium",
+                openai_websearch_enabled=True,
+                wordpress_url="https://cliente.test",
+                wordpress_username="editor",
+                wordpress_application_password="",
+                cron_enabled=True,
+                cron_token="",
+                cron_mode="publish",
+                cron_max_items=1,
+                cron_schedule="0 7 * * 1-5",
+                cron_dry_run=False,
+                cron_allow_unreviewed_publish=True,
+            )
+
+            with (
+                patch.object(settings, "CLIENT_INSTRUCTIONS_PATH", str(client_file)),
+                patch.object(settings, "SEO_GUIDELINES_PATH", str(seo_file)),
+                patch.object(settings, "GENERATE_PAUTAS_PROMPT_PATH", str(pautas_prompt)),
+                patch.object(settings, "GENERATE_ARTICLE_PROMPT_PATH", str(article_prompt)),
+                patch.object(settings, "BACKUPS_DIR", str(root / "backups")),
+                patch("app.services.editorial_configuration_service.wordpress_client.reload_configuration"),
+            ):
+                response = EditorialConfigurationService(env_path=env_path).save_configuration(payload)
+
+            env_text = env_path.read_text(encoding="utf-8")
+            self.assertEqual(client_file.read_text(encoding="utf-8").strip(), "Novo cliente")
+            self.assertIn('WORDPRESS_URL="https://cliente.test"', env_text)
+            self.assertIn('CRON_SCHEDULE="0 7 * * 1-5"', env_text)
+            self.assertIn('OPENAI_API_KEY="old-openai"', env_text)
+            self.assertIn('WORDPRESS_APPLICATION_PASSWORD="old-wp"', env_text)
+            self.assertIn('CRON_TOKEN="old-cron"', env_text)
+            self.assertTrue((root / "backups" / "configuration").exists())
+            self.assertEqual(response.wordpress_url, "https://cliente.test")
 
 
 class PublishServiceTests(unittest.TestCase):

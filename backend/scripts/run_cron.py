@@ -12,7 +12,7 @@ from app.core.config import settings  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Executa um ciclo da automacao editorial Easy Artigos.")
+    parser = argparse.ArgumentParser(description="Executa um ciclo da automacao do Motor Editorial.")
     parser.add_argument(
         "--mode",
         choices=["generate_only", "draft", "publish"],
@@ -44,11 +44,19 @@ def parse_args() -> argparse.Namespace:
         default=f"http://127.0.0.1:8000{settings.API_V1_STR}/editorial/automation/run",
         help="URL interna do endpoint de automacao do backend em execucao.",
     )
+    parser.add_argument(
+        "--print-schedule",
+        action="store_true",
+        help="Mostra a expressao CRON_SCHEDULE configurada e encerra.",
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.print_schedule:
+        print(settings.CRON_SCHEDULE)
+        return 0
     if not settings.CRON_TOKEN:
         print("CRON_TOKEN nao configurado. A automacao nao pode ser autenticada.", file=sys.stderr)
         return 2
