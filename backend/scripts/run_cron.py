@@ -25,10 +25,19 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Executa alteracoes. Sem esta flag, o comando apenas simula o ciclo.",
     )
-    parser.add_argument(
+    publication_group = parser.add_mutually_exclusive_group()
+    publication_group.add_argument(
         "--allow-unreviewed-publish",
+        dest="allow_unreviewed_publish",
         action="store_true",
-        help="Permite publicar conteudo ainda nao revisado em modo publish. Use com extrema cautela.",
+        default=None,
+        help="Permite publicar conteudo ainda nao revisado em modo publish.",
+    )
+    publication_group.add_argument(
+        "--reviewed-only",
+        dest="allow_unreviewed_publish",
+        action="store_false",
+        help="Sobrescreve a configuracao e publica apenas itens ja em rascunho.",
     )
     parser.add_argument(
         "--api-url",
@@ -48,7 +57,11 @@ def main() -> int:
         "mode": args.mode,
         "max_items": args.max_items,
         "dry_run": not args.execute,
-        "allow_unreviewed_publish": args.allow_unreviewed_publish,
+        "allow_unreviewed_publish": (
+            settings.CRON_ALLOW_UNREVIEWED_PUBLISH
+            if args.allow_unreviewed_publish is None
+            else args.allow_unreviewed_publish
+        ),
     }
     try:
         response = requests.post(

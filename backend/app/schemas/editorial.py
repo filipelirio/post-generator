@@ -157,3 +157,4 @@ class EditorialSystemStatusResponse(BaseModel):
     cron_mode: Literal["generate_only", "draft", "publish"]
     cron_dry_run: bool
     cron_max_items: int
+    cron_allow_unreviewed_publish: bool

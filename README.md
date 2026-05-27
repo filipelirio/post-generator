@@ -184,7 +184,7 @@ Modos disponíveis:
 
 - `generate_only`: gera pacote e capa para a próxima pauta `Pendente`, sem acessar publicação do WordPress.
 - `draft`: transforma uma pauta `Em producao` ou `Pendente` em rascunho no WordPress; ao receber uma pauta pendente, gera o pacote antes.
-- `publish`: por padrão, publica apenas uma pauta que já esteja em `Rascunho`.
+- `publish`: publica uma pauta em `Rascunho`; com publicação direta habilitada, também gera e publica a próxima pauta `Pendente` na mesma rodada.
 
 Configure no `.env` da VPS:
 
@@ -218,7 +218,24 @@ Para publicar automaticamente um rascunho já revisado:
 0 8 * * 1-5 cd /opt/easy-artigos/backend && ./venv/bin/python scripts/run_cron.py --mode publish --max-items 1 --execute >> /var/log/easy-artigos-publish.log 2>&1
 ```
 
-Não use `--allow-unreviewed-publish` no cron normal: essa opção permite levar conteúdo ainda não revisado diretamente ao ar e exige também `CRON_ALLOW_UNREVIEWED_PUBLISH="true"`.
+Para o fluxo automático direto solicitado, sem etapa de rascunho, configure:
+
+```dotenv
+CRON_ENABLED="true"
+CRON_TOKEN="um-token-longo-aleatorio-e-privado"
+CRON_MODE="publish"
+CRON_MAX_ITEMS="1"
+CRON_DRY_RUN="false"
+CRON_ALLOW_UNREVIEWED_PUBLISH="true"
+```
+
+Nesse modo, o comando abaixo seleciona uma pauta pendente, gera artigo e capa e publica diretamente no WordPress:
+
+```cron
+0 7 * * 1-5 cd /opt/easy-artigos/backend && ./venv/bin/python scripts/run_cron.py --execute >> /var/log/easy-artigos-direto.log 2>&1
+```
+
+Se quiser pausar a publicação direta sem alterar o `.env`, rode manualmente com `--reviewed-only`. Antes de ligar o cron direto na VPS, valide uma execução sem `--execute`, que apenas informa qual pauta seria publicada.
 
 ## Preparação para VPS
 
@@ -232,7 +249,7 @@ Requisitos para o deploy:
 - Persistir e fazer backup externo de `backend/data`.
 - Configurar `CORS_ORIGINS` apenas com o domínio real do painel.
 
-O cron job deve chamar somente `http://127.0.0.1:8000` e utilizar `CRON_TOKEN`. Por segurança, mantenha o modo `draft` durante a primeira fase na VPS e publique apenas depois da revisão no painel.
+O cron job deve chamar somente `http://127.0.0.1:8000` e utilizar `CRON_TOKEN`. A configuração permite publicação direta, mas o primeiro disparo na VPS deve ser feito sem `--execute` para confirmar qual pauta será escolhida.
 
 ## Estado atual
 

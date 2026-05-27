@@ -32,6 +32,7 @@ type SystemStatus = {
   cron_mode: "generate_only" | "draft" | "publish";
   cron_dry_run: boolean;
   cron_max_items: number;
+  cron_allow_unreviewed_publish: boolean;
 };
 
 function StatusBadge({ ok, label }: { ok: boolean; label: string }) {
@@ -179,7 +180,7 @@ export default function SettingsPage() {
                   <p className="font-semibold text-slate-900">Cron job para VPS</p>
                   <p className="mt-1 text-slate-600">
                     {status.cron_enabled
-                      ? `Habilitado em modo ${status.cron_mode}, limite de ${status.cron_max_items} item(ns) por ciclo${status.cron_dry_run ? " (simulação)" : ""}.`
+                      ? `Habilitado em modo ${status.cron_mode}, limite de ${status.cron_max_items} item(ns) por ciclo${status.cron_dry_run ? " (simulação)" : ""}. ${status.cron_mode === "publish" && status.cron_allow_unreviewed_publish ? "Publicação direta ativa: gera e publica sem rascunho." : ""}`
                       : "Desligado. Ative somente após configurar token e revisar o modo de execução."}
                   </p>
                 </div>

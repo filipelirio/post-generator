@@ -51,6 +51,9 @@ class EditorialCronService:
         elif request.mode == "draft":
             action = "would_create_wordpress_draft"
             resulting_status = "Rascunho"
+        elif pauta.status == "Pendente":
+            action = "would_generate_and_publish_wordpress_post"
+            resulting_status = "Publicado"
         else:
             action = "would_publish_wordpress_post"
             resulting_status = "Publicado"

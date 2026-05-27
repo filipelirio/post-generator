@@ -47,6 +47,7 @@ def get_editorial_system_status():
         cron_mode=settings.CRON_MODE,
         cron_dry_run=settings.CRON_DRY_RUN,
         cron_max_items=settings.CRON_MAX_ITEMS,
+        cron_allow_unreviewed_publish=settings.CRON_ALLOW_UNREVIEWED_PUBLISH,
     )
 
 

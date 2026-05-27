@@ -200,6 +200,36 @@ class CronServiceTests(unittest.TestCase):
         self.assertEqual(article.generated, ["3"])
         self.assertEqual(publisher.published, [("3", "draft")])
 
+    def test_direct_publish_generates_pending_article_and_publishes_in_same_cycle(self) -> None:
+        article = self.FakeArticle()
+        publisher = self.FakePublish()
+        service = EditorialCronService(
+            excel_service=self.FakeExcel([build_pauta("4")]),
+            article_service=article,
+            publish_service=publisher,
+        )
+
+        result = service.run(
+            AutomationRunRequest(mode="publish", dry_run=False, allow_unreviewed_publish=True)
+        )
+
+        self.assertEqual(result.actions[0].resulting_status, "Publicado")
+        self.assertEqual(article.generated, ["4"])
+        self.assertEqual(publisher.published, [("4", "publish")])
+
+    def test_direct_publish_dry_run_describes_generation_and_publication(self) -> None:
+        service = EditorialCronService(
+            excel_service=self.FakeExcel([build_pauta("5")]),
+            article_service=self.FakeArticle(),
+            publish_service=self.FakePublish(),
+        )
+
+        result = service.run(
+            AutomationRunRequest(mode="publish", dry_run=True, allow_unreviewed_publish=True)
+        )
+
+        self.assertEqual(result.actions[0].action, "would_generate_and_publish_wordpress_post")
+
 
 class CronEndpointTests(unittest.TestCase):
     def test_automation_endpoint_requires_token(self) -> None:
